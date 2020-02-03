@@ -48,7 +48,7 @@ public class MotionSensor implements GpioPinListenerDigital {
     }
 
     private Long getLastActivityTime(){
-        return System.currentTimeMillis() - activityTime;
+        return System.currentTimeMillis() - activitySum;
     }
 
     private MotionSensor getMotionSensor(){
