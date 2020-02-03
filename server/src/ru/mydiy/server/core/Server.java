@@ -100,7 +100,7 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
 
     /*Hardware Events*/
     @Override
-    public void motionState(MotionSensor monitor, boolean state) {
+    public synchronized void motionState(MotionSensor monitor, boolean state) {
         if (client != null){
             if (state){
                 client.sendMessage("PIR " + monitor.getName() + " IS HIGH");
@@ -111,21 +111,21 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
     }
 
     @Override
-    public void onSensorException(MotionSensor monitor, Exception e) {
+    public synchronized void onSensorException(MotionSensor monitor, Exception e) {
         if (client != null){
             client.sendMessage("EXCEPTION in MonitorSensor: " + e.getMessage());
         }
     }
 
     @Override
-    public void activityIsGone(MotionSensor monitor, int overallTime) {
+    public synchronized void activityIsGone(MotionSensor monitor, int overallTime) {
         if (client != null){
             client.sendMessage("Activity is gone. Overall time of invasion is: " + overallTime + "s");
         }
     }
 
     @Override
-    public void debugMessage(MotionSensor monitor, String msg) {
+    public synchronized void debugMessage(MotionSensor monitor, String msg) {
         client.sendMessage(msg);
     }
 }
