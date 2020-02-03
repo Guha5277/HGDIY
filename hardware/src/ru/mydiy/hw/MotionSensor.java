@@ -65,7 +65,7 @@ public class MotionSensor implements GpioPinListenerDigital {
         if (state == PinState.HIGH){
             activityTime = System.currentTimeMillis();
             listener.motionState(this, HIGH);
-            if(!timeChecker.isAlive()){
+            if(timeChecker != null && !timeChecker.isAlive()){
                 timeChecker = new TimeChecker();
                 timeChecker.start();
             }
