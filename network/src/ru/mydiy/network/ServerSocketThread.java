@@ -11,6 +11,7 @@ public class ServerSocketThread extends Thread{
     private final int port;
     private final int timeout;
     private final ServerSocketListener listener;
+   //private final ServerSocketThread sst;
 
     public ServerSocketThread(ServerSocketListener listener, int port, int timeout){
         this.port = port;

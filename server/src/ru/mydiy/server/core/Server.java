@@ -7,7 +7,6 @@ import ru.mydiy.network.ServerSocketListener;
 import ru.mydiy.network.ServerSocketThread;
 import ru.mydiy.network.SocketThread;
 import ru.mydiy.network.SocketThreadListener;
-import com.pi4j.io.gpio.OrangePiPin;
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -16,17 +15,17 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
     private int port = 5277;
     private int timeout = 2000;
     private SocketThread client;
+    ServerSocketThread serverSocketThread;
 
     public static void main(String[] args) {
         Server server = new Server();
     }
 
     Server() {
-        MotionSensor monitor1 = new MotionSensor(this);
+        MotionSensor monitor1 = new MotionSensor(this, "PIR1");
         //MotionSensor monitor2 = new MotionSensor(this, OrangePiPin.GPIO_02);
         //GSMModule gsmMonitor = new GSMModule();
-
-        ServerSocketThread serverSocketThread = new ServerSocketThread(this, port, timeout);
+        serverSocketThread = new ServerSocketThread(this, port, timeout);
     }
 
     public boolean getAlarmState() {
@@ -60,13 +59,14 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
 
     @Override
     public void onSocketAccepted(ServerSocket server, Socket socket) {
-        //putLog(socket.getRemoteSocketAddress() + " connected!");
-        client = new SocketThread(this, "dafault", socket);
+        putLog(socket.getRemoteSocketAddress() + " connected!");
+        client = new SocketThread(this, "default", socket);
     }
 
     @Override
     public void onServerException(ServerSocketThread thread, Exception e) {
-
+        putLog("EXCEPTION in ServerSocketThread: " + e.getMessage());
+        serverSocketThread.interrupt();
     }
 
     @Override
@@ -83,7 +83,7 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
 
     @Override
     public void onSocketReady(SocketThread socketThread, Socket socket) {
-
+        putLog("Socket ready for exchange data");
     }
 
     @Override
@@ -93,7 +93,8 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
 
     @Override
     public void onSocketThreadException(SocketThread socketThread, Exception e) {
-        putLog("ooops!");
+        putLog("EXCEPTION in SocketThread: " + e.getMessage());
+        serverSocketThread.interrupt();
     }
 
 
@@ -102,18 +103,24 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
     public void motionState(MotionSensor monitor, boolean state) {
         if (client != null){
             if (state){
-                client.sendMessage("PIR IS HIGH");
+                client.sendMessage("PIR " + monitor.getName() + " IS HIGH");
             } else {
-                client.sendMessage("PIR IS LOW");
+                client.sendMessage("PIR " + monitor.getName() + " IS LOW");
             }
-
         }
     }
 
     @Override
     public void onSensorException(MotionSensor monitor, Exception e) {
         if (client != null){
-            client.sendMessage("EXCEPTION IN MonitorSensor: " + e.getMessage());
+            client.sendMessage("EXCEPTION in MonitorSensor: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void activityIsGone(MotionSensor monitor, int overallTime) {
+        if (client != null){
+            client.sendMessage("Activity is gone. Overall time of invasion is: " + overallTime + "s");
         }
     }
 }

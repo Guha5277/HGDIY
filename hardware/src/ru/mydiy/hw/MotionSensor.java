@@ -6,39 +6,31 @@ import com.pi4j.io.gpio.event.GpioPinListenerDigital;
 import com.pi4j.platform.Platform;
 import com.pi4j.platform.PlatformAlreadyAssignedException;
 import com.pi4j.platform.PlatformManager;
-import com.pi4j.util.CommandArgumentParser;
 
 public class MotionSensor implements GpioPinListenerDigital {
     private final MotionSensorListener listener;
     private final GpioController gpio;
     private final GpioPinDigitalInput inputPin;
+    private final String name;
     private final boolean HIGH = true;
     private final boolean LOW = false;
+    private final int GPIO_00 = 0;
+    private final int GPIO_01 = 1;
     private static final Pin[] orangePins = {OrangePiPin.GPIO_01, OrangePiPin.GPIO_00};
+    private TimeChecker timeChecker;
+    private long activityTime;
+    private long activitySum;
 
-    /*TODO
-        Проанализировать работу датчика и количество срабатываний. Определить, как устанавливать угрозу и нужна ли градация
-        по уровням.
-     */
-
-//    static {
-//        try {
-//            PlatformManager.setPlatform(Platform.ORANGEPI);
-//        } catch (PlatformAlreadyAssignedException e){
-//
-//        }
-//    }
-    public MotionSensor(MotionSensorListener listener){
+    public MotionSensor(MotionSensorListener listener, String name){
         try {
             PlatformManager.setPlatform(Platform.ORANGEPI);
         } catch (PlatformAlreadyAssignedException e){
 
         }
         gpio = GpioFactory.getInstance();
+        this.name = name;
         this.listener = listener;
-        inputPin = gpio.provisionDigitalInputPin(orangePins[0], PinPullResistance.PULL_DOWN);
-        //Pin pin = CommandArgumentParser.getPin(OrangePiPin.class, orangePins[0]);
-        //inputPin = gpio.provisionDigitalInputPin(pin);
+        inputPin = gpio.provisionDigitalInputPin(orangePins[GPIO_01], name, PinPullResistance.PULL_DOWN);
         inputPin.addListener(this);
         inputPin.setShutdownOptions(true);
     }
@@ -51,13 +43,56 @@ public class MotionSensor implements GpioPinListenerDigital {
         inputPin.removeAllListeners();
     }
 
+    public String getName(){
+        return inputPin.getName();
+    }
+
+    private Long getLastActivityTime(){
+        return System.currentTimeMillis() - activityTime;
+    }
+
+    private MotionSensor getMotionSensor(){
+        return this;
+    }
+
+    private Long getActivitySum(){
+        return activitySum;
+    }
+
     @Override
     public void handleGpioPinDigitalStateChangeEvent(GpioPinDigitalStateChangeEvent gpioPinDigitalStateChangeEvent) {
         PinState state = gpioPinDigitalStateChangeEvent.getState();
         if (state == PinState.HIGH){
+            activityTime = System.currentTimeMillis();
             listener.motionState(this, HIGH);
+            if(!timeChecker.isAlive()){
+                timeChecker = new TimeChecker();
+                timeChecker.start();
+            }
         } else {
             listener.motionState(this, LOW);
+            activityTime = System.currentTimeMillis() - activityTime;
+            activitySum += activityTime;
+        }
+    }
+
+    private class TimeChecker extends Thread{
+
+
+        @Override
+        public void run() {
+            while (!isInterrupted()) {
+                if (getLastActivityTime() > 30000) {
+                        listener.activityIsGone(getMotionSensor(), (int) (getActivitySum() / 1000));
+                        interrupt();
+                } else {
+                    try {
+                        sleep(5000);
+                    } catch (InterruptedException e) {
+                        listener.onSensorException(getMotionSensor(), e);
+                    }
+                }
+            }
         }
     }
 }
