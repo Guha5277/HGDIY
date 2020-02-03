@@ -12,6 +12,9 @@ public class MotionSensor implements GpioPinListenerDigital {
     private final MotionSensorListener listener;
     private final GpioController gpio = GpioFactory.getInstance();
     private final GpioPinDigitalInput inputPin;
+    private final boolean HIGH = true;
+    private final boolean LOW = false;
+
     /*TODO
         Проанализировать работу датчика и количество срабатываний. Определить, как устанавливать угрозу и нужна ли градация
         по уровням.
@@ -23,15 +26,15 @@ public class MotionSensor implements GpioPinListenerDigital {
 //    private long currentTime = System.currentTimeMillis();
 
     public MotionSensor(MotionSensorListener listener, Pin pin){
-
         try {
-            PlatformManager.setPlatform(Platform.RASPBERRYPI);
+            PlatformManager.setPlatform(Platform.ORANGEPI);
         } catch (PlatformAlreadyAssignedException e){
             listener.onSensorException(this, e);
         }
         this.listener = listener;
         Pin pin2 = CommandArgumentParser.getPin(OrangePiPin.class, pin);
         inputPin = gpio.provisionDigitalInputPin(pin2);
+        inputPin.addListener(this);
         inputPin.setShutdownOptions(true);
     }
 
@@ -47,7 +50,9 @@ public class MotionSensor implements GpioPinListenerDigital {
     public void handleGpioPinDigitalStateChangeEvent(GpioPinDigitalStateChangeEvent gpioPinDigitalStateChangeEvent) {
         PinState state = gpioPinDigitalStateChangeEvent.getState();
         if (state == PinState.HIGH){
-            listener.onMotionDetection(this);
+            listener.motionState(this, HIGH);
+        } else {
+            listener.motionState(this, LOW);
         }
     }
 }
