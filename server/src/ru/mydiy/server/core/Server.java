@@ -22,7 +22,7 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
     }
 
     Server() {
-        MotionSensor monitor1 = new MotionSensor(this, OrangePiPin.GPIO_01);
+        MotionSensor monitor1 = new MotionSensor(this);
         //MotionSensor monitor2 = new MotionSensor(this, OrangePiPin.GPIO_02);
         //GSMModule gsmMonitor = new GSMModule();
 

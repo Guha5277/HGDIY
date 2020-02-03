@@ -14,26 +14,24 @@ public class MotionSensor implements GpioPinListenerDigital {
     private final GpioPinDigitalInput inputPin;
     private final boolean HIGH = true;
     private final boolean LOW = false;
+    private static final Pin[] orangePins = {OrangePiPin.GPIO_01, OrangePiPin.GPIO_00};
 
     /*TODO
         Проанализировать работу датчика и количество срабатываний. Определить, как устанавливать угрозу и нужна ли градация
         по уровням.
      */
-//    private int warningLevel = 0;
-//    private static final int HIGH = 1000;
-//    private static final int LOW = 2000;
-//    private final int sensitivity;
-//    private long currentTime = System.currentTimeMillis();
 
-    public MotionSensor(MotionSensorListener listener, Pin pin){
+    static {
         try {
             PlatformManager.setPlatform(Platform.ORANGEPI);
         } catch (PlatformAlreadyAssignedException e){
-            listener.onSensorException(this, e);
+
         }
+    }
+    public MotionSensor(MotionSensorListener listener){
         this.listener = listener;
-        Pin pin2 = CommandArgumentParser.getPin(OrangePiPin.class, pin);
-        inputPin = gpio.provisionDigitalInputPin(pin2);
+        Pin pin = CommandArgumentParser.getPin(OrangePiPin.class, orangePins[0]);
+        inputPin = gpio.provisionDigitalInputPin(pin);
         inputPin.addListener(this);
         inputPin.setShutdownOptions(true);
     }
