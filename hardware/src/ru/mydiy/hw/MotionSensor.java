@@ -20,6 +20,7 @@ public class MotionSensor implements GpioPinListenerDigital {
     private TimeChecker timeChecker;
     private long activityTime;
     private long activitySum;
+    private long timeOfLastActivity;
 
     public MotionSensor(MotionSensorListener listener, String name){
         try {
@@ -48,7 +49,7 @@ public class MotionSensor implements GpioPinListenerDigital {
     }
 
     private Long getLastActivityTime(){
-        return System.currentTimeMillis() - activitySum;
+        return timeOfLastActivity;
     }
 
     private MotionSensor getMotionSensor(){
@@ -64,6 +65,7 @@ public class MotionSensor implements GpioPinListenerDigital {
         PinState state = gpioPinDigitalStateChangeEvent.getState();
         if (state == PinState.HIGH){
             activityTime = System.currentTimeMillis();
+            timeOfLastActivity = activityTime;
             listener.motionState(this, HIGH);
             if(timeChecker == null || !timeChecker.isAlive()){
                 timeChecker = new TimeChecker();
