@@ -52,6 +52,7 @@ public class MotionSensor implements GpioPinListenerDigital {
         return timeOfLastActivity;
     }
 
+
     private MotionSensor getMotionSensor(){
         return this;
     }
@@ -91,7 +92,7 @@ public class MotionSensor implements GpioPinListenerDigital {
                         interrupt();
                 } else {
                     try {
-                        listener.debugMessage(getMotionSensor(), "TimeChecker: ACTIVITY IS NOT GONE! OVERALL TIME IS: " + getLastActivityTime() + ", System time is: " + System.currentTimeMillis());
+                        listener.debugMessage(getMotionSensor(), "TimeChecker: ACTIVITY IS NOT GONE! OVERALL TIME IS: " + getActivitySum() + ", System time is: " + System.currentTimeMillis());
                         sleep(5000);
                     } catch (InterruptedException e) {
                         listener.onSensorException(getMotionSensor(), e);
