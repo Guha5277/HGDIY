@@ -10,7 +10,7 @@ import com.pi4j.util.CommandArgumentParser;
 
 public class MotionSensor implements GpioPinListenerDigital {
     private final MotionSensorListener listener;
-    private final GpioController gpio = GpioFactory.getInstance();
+    private final GpioController gpio;
     private final GpioPinDigitalInput inputPin;
     private final boolean HIGH = true;
     private final boolean LOW = false;
@@ -21,17 +21,24 @@ public class MotionSensor implements GpioPinListenerDigital {
         по уровням.
      */
 
-    static {
+//    static {
+//        try {
+//            PlatformManager.setPlatform(Platform.ORANGEPI);
+//        } catch (PlatformAlreadyAssignedException e){
+//
+//        }
+//    }
+    public MotionSensor(MotionSensorListener listener){
         try {
             PlatformManager.setPlatform(Platform.ORANGEPI);
         } catch (PlatformAlreadyAssignedException e){
 
         }
-    }
-    public MotionSensor(MotionSensorListener listener){
+        gpio = GpioFactory.getInstance();
         this.listener = listener;
-        Pin pin = CommandArgumentParser.getPin(OrangePiPin.class, orangePins[0]);
-        inputPin = gpio.provisionDigitalInputPin(pin);
+        inputPin = gpio.provisionDigitalInputPin(orangePins[0], PinPullResistance.PULL_DOWN);
+        //Pin pin = CommandArgumentParser.getPin(OrangePiPin.class, orangePins[0]);
+        //inputPin = gpio.provisionDigitalInputPin(pin);
         inputPin.addListener(this);
         inputPin.setShutdownOptions(true);
     }
