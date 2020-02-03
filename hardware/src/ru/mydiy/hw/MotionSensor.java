@@ -81,12 +81,15 @@ public class MotionSensor implements GpioPinListenerDigital {
 
         @Override
         public void run() {
+            listener.debugMessage(getMotionSensor(), "THREAD TimeChecker started!");
             while (!isInterrupted()) {
                 if (getLastActivityTime() > 30000) {
+                        listener.debugMessage(getMotionSensor(), "TimeChecker: ACTIVITY GONE!");
                         listener.activityIsGone(getMotionSensor(), (int) (getActivitySum() / 1000));
                         interrupt();
                 } else {
                     try {
+                        listener.debugMessage(getMotionSensor(), "TimeChecker: ACTIVITY IS NOT GONE! OVERALL TIME IS: " + getLastActivityTime() + ", System time is: " + System.currentTimeMillis());
                         sleep(5000);
                     } catch (InterruptedException e) {
                         listener.onSensorException(getMotionSensor(), e);

@@ -123,4 +123,9 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
             client.sendMessage("Activity is gone. Overall time of invasion is: " + overallTime + "s");
         }
     }
+
+    @Override
+    public void debugMessage(MotionSensor monitor, String msg) {
+        client.sendMessage(msg);
+    }
 }
