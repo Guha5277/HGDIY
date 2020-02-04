@@ -22,7 +22,7 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
     }
 
     Server() {
-        MotionSensor monitor1 = new MotionSensor(this, "PIR1");
+        MotionSensor monitor1 = new MotionSensor(this, "PIR1", 0);
         //MotionSensor monitor2 = new MotionSensor(this, OrangePiPin.GPIO_02);
         //GSMModule gsmMonitor = new GSMModule();
         serverSocketThread = new ServerSocketThread(this, port, timeout);
@@ -94,7 +94,7 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
     @Override
     public void onSocketThreadException(SocketThread socketThread, Exception e) {
         putLog("EXCEPTION in SocketThread: " + e.getMessage());
-        serverSocketThread.interrupt();
+        socketThread.interrupt();
     }
 
 
