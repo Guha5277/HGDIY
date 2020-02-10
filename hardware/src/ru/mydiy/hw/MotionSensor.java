@@ -27,7 +27,7 @@ public class MotionSensor implements GpioPinListenerDigital {
         try {
             PlatformManager.setPlatform(Platform.ORANGEPI);
         } catch (PlatformAlreadyAssignedException e){
-            listener.onSensorException(this, e);
+            listener.onException(this, e);
         }
         gpio = GpioFactory.getInstance();
         inputPin = gpio.provisionDigitalInputPin(orangePins[gpioNumber], name, PinPullResistance.PULL_DOWN);
@@ -86,7 +86,7 @@ public class MotionSensor implements GpioPinListenerDigital {
                         listener.debugMessage(getMotionSensor(), "TimeChecker: ACTIVITY IS NOT GONE! OVERALL TIME IS: " + (getActivitySum() / 1000) + ", System time is: " + (System.currentTimeMillis() / 1000));
                         sleep(15000);
                     } catch (InterruptedException e) {
-                        listener.onSensorException(getMotionSensor(), e);
+                        listener.onException(getMotionSensor(), e);
                     }
                 }
             }

@@ -17,6 +17,11 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
     private SocketThread client;
     ServerSocketThread serverSocketThread;
 
+    //Флаги готовности
+    private boolean isServerReady = false;
+    private boolean isMotionSensorReady = false;
+    private boolean isGSMModuleReady = false;
+
     public static void main(String[] args) {
         Server server = new Server();
     }
@@ -74,7 +79,6 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
 
     }
 
-
     /*SocketThread Events*/
     @Override
     public void onSocketThreadStart(SocketThread socketThread) {
@@ -97,8 +101,7 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
         socketThread.interrupt();
     }
 
-
-    /*Hardware Events*/
+    /*MotionSernsor Events*/
     @Override
     public synchronized void motionState(MotionSensor monitor, boolean state) {
         if (client != null){
@@ -111,7 +114,7 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
     }
 
     @Override
-    public synchronized void onSensorException(MotionSensor monitor, Exception e) {
+    public synchronized void onException(MotionSensor monitor, Exception e) {
         if (client != null){
             client.sendMessage("EXCEPTION in MonitorSensor: " + e.getMessage());
         }
