@@ -1,6 +1,7 @@
 package ru.mydiy.server.core;
 
 import ru.mydiy.hw.GSMListener;
+import ru.mydiy.hw.GSMModule;
 import ru.mydiy.hw.MotionSensorListener;
 import ru.mydiy.hw.MotionSensor;
 import ru.mydiy.network.ServerSocketListener;
@@ -98,7 +99,7 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
     @Override
     public void onSocketThreadException(SocketThread socketThread, Exception e) {
         putLog("EXCEPTION in SocketThread: " + e.getMessage());
-        socketThread.interrupt();
+        socketThread.close();
     }
 
     /*MotionSernsor Events*/
@@ -121,7 +122,7 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
     }
 
     @Override
-    public synchronized void activityIsGone(MotionSensor monitor, int overallTime) {
+    public synchronized void activityIsGone(MotionSensor monitor, long overallTime) {
         if (client != null){
             client.sendMessage("Activity is gone. Overall time of invasion is: " + overallTime + "s");
         }
@@ -129,6 +130,14 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
 
     @Override
     public synchronized void debugMessage(MotionSensor monitor, String msg) {
-        client.sendMessage(msg);
+        if (client != null) {
+            client.sendMessage(msg);
+        }
+    }
+
+    /*GSMModule events*/
+    @Override
+    public void onException(GSMModule module, Exception e) {
+
     }
 }

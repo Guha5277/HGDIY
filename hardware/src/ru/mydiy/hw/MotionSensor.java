@@ -16,9 +16,9 @@ public class MotionSensor implements GpioPinListenerDigital {
     private final boolean LOW = false;
     private static final Pin[] orangePins = {OrangePiPin.GPIO_00, OrangePiPin.GPIO_01, OrangePiPin.GPIO_02, OrangePiPin.GPIO_03, OrangePiPin.GPIO_04};
     private TimeChecker timeChecker;
-    private long activityTime;
-    private long activitySum;
-    private long timeOfLastActivity;
+    private long timeCounter = 0;
+    private long invasionSummaryTime = 0;
+    private long timeOfLastActivity = 0;
 
     public MotionSensor(MotionSensorListener listener, String name, int gpioNumber){
         this.name = name;
@@ -39,16 +39,12 @@ public class MotionSensor implements GpioPinListenerDigital {
         return inputPin.getName();
     }
 
-    private Long getLastActivityTime(){
-        return System.currentTimeMillis() - timeOfLastActivity;
-    }
-
     private MotionSensor getMotionSensor(){
         return this;
     }
 
-    private Long getActivitySum(){
-        return activitySum;
+    private synchronized void updateCounterTime(){
+
     }
 
     //Обработка событий изменения состояния GPIO
@@ -56,12 +52,12 @@ public class MotionSensor implements GpioPinListenerDigital {
     public void handleGpioPinDigitalStateChangeEvent(GpioPinDigitalStateChangeEvent gpioPinDigitalStateChangeEvent) {
         PinState state = gpioPinDigitalStateChangeEvent.getState();
         if (state == PinState.HIGH){
-            activityTime = System.currentTimeMillis();
-            timeOfLastActivity = activityTime;
+            timeCounter = System.currentTimeMillis();  //Засекаем текущее время
+            timeOfLastActivity = timeCounter;          //Записываем это время
             listener.motionState(this, HIGH);
         } else {
-            activityTime = System.currentTimeMillis() - activityTime;
-            activitySum += activityTime;
+            timeCounter = System.currentTimeMillis() - timeCounter;
+            invasionSummaryTime += timeCounter;
             listener.motionState(this, LOW);
 
             if(timeChecker == null || !timeChecker.isAlive()){
@@ -77,13 +73,13 @@ public class MotionSensor implements GpioPinListenerDigital {
         public void run() {
             listener.debugMessage(getMotionSensor(), "THREAD TimeChecker started!");
             while (!isInterrupted()) {
-                if (inputPin.isLow() && getLastActivityTime() > 35000) {
-                        listener.debugMessage(getMotionSensor(), "TimeChecker: ACTIVITY GONE!");
-                        listener.activityIsGone(getMotionSensor(), (int) (getActivitySum() / 1000));
+                if (inputPin.isLow() && (System.currentTimeMillis() - timeOfLastActivity) > 30000) {
+                        listener.activityIsGone(getMotionSensor(), invasionSummaryTime);
+                        invasionSummaryTime = 0;
                         interrupt();
                 } else {
                     try {
-                        listener.debugMessage(getMotionSensor(), "TimeChecker: ACTIVITY IS NOT GONE! OVERALL TIME IS: " + (getActivitySum() / 1000) + ", System time is: " + (System.currentTimeMillis() / 1000));
+                        listener.debugMessage(getMotionSensor(), "TimeChecker: ACTIVITY IS NOT GONE! OVERALL TIME IS: " + invasionSummaryTime  + ", System time is: " + System.currentTimeMillis());
                         sleep(15000);
                     } catch (InterruptedException e) {
                         listener.onException(getMotionSensor(), e);

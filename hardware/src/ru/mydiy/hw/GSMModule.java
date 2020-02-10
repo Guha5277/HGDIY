@@ -12,7 +12,7 @@ public class GSMModule implements SerialDataEventListener{
         serial = SerialFactory.createInstance();
         serial.addListener(this);
         try {
-            serial.open(OrangePiSerial.UART0_COM_PORT, Baud._9600, DataBits._8, Parity.NONE, StopBits._1, FlowControl.NONE);
+            serial.open(OrangePiSerial.UART3_COM_PORT, Baud._9600, DataBits._8, Parity.NONE, StopBits._1, FlowControl.NONE);
         } catch (IOException e){
             listener.onException(this, e);
         }
