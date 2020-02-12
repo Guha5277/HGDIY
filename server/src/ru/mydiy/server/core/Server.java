@@ -16,6 +16,7 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
     private int port = 5277;
     private int timeout = 2000;
     private SocketThread client;
+    private GSMModule gsmModule;
     ServerSocketThread serverSocketThread;
 
     //Флаги готовности
@@ -30,7 +31,8 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
     Server() {
         MotionSensor monitor1 = new MotionSensor(this, "PIR1", 0);
         //MotionSensor monitor2 = new MotionSensor(this, OrangePiPin.GPIO_02);
-        //GSMModule gsmMonitor = new GSMModule();
+
+        gsmModule = new GSMModule(this, 1);
         serverSocketThread = new ServerSocketThread(this, port, timeout);
     }
 
@@ -93,7 +95,7 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
 
     @Override
     public void onReceiveMessage(SocketThread socketThread, Socket socket, String msg) {
-        socketThread.sendMessage("Echo: " + msg);
+        gsmModule.sendMessage(msg);
     }
 
     @Override
@@ -139,5 +141,12 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
     @Override
     public void onException(GSMModule module, Exception e) {
 
+    }
+
+    @Override
+    public void onReceivedMessage(GSMModule module, String msg) {
+        if (client != null) {
+            client.sendMessage("GMS SAYS: "  + msg);
+        }
     }
 }
