@@ -139,8 +139,14 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
 
     /*GSMModule events*/
     @Override
-    public void onException(GSMModule module, Exception e) {
+    public void onModuleStarted(String msg) {
+        putLog("[GSM] started");
+    }
 
+    @Override
+    public void onException(GSMModule module, Exception e) {
+        putLog("[GSM] EXCEPTION:");
+        e.printStackTrace();
     }
 
     @Override
@@ -148,5 +154,10 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
         if (client != null) {
             client.sendMessage("GMS SAYS: "  + msg);
         }
+    }
+
+    @Override
+    public void onSendMessage(String msg) {
+        putLog("[GSM] send message: " + msg);
     }
 }
