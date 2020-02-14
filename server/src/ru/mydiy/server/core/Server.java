@@ -10,6 +10,8 @@ import ru.mydiy.network.SocketThread;
 import ru.mydiy.network.SocketThreadListener;
 import java.net.ServerSocket;
 import java.net.Socket;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class Server implements ServerSocketListener, SocketThreadListener, GSMListener, MotionSensorListener {
     private boolean alarmState;
@@ -18,6 +20,7 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
     private SocketThread client;
     private GSMModule gsmModule;
     ServerSocketThread serverSocketThread;
+    private final static Logger LOGGER = LogManager.getLogger();
 
     //Флаги готовности
     private boolean isServerReady = false;
@@ -31,7 +34,6 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
     Server() {
         MotionSensor monitor1 = new MotionSensor(this, "PIR1", 0);
         //MotionSensor monitor2 = new MotionSensor(this, OrangePiPin.GPIO_02);
-
         gsmModule = new GSMModule(this, 1);
         serverSocketThread = new ServerSocketThread(this, port, timeout);
     }
@@ -44,20 +46,15 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
         this.alarmState = alarm;
     }
 
-
-    public void putLog(String msg){
-        System.out.println(msg);
-    }
-
     /*ServerSocketThread Events*/
     @Override
     public void onThreadStart(ServerSocketThread thread) {
-        putLog(thread.getName() + " : started!");
+        LOGGER.info(thread.getName() + " : started!");
     }
 
     @Override
     public void onServerStart(ServerSocketThread thread, ServerSocket server) {
-        putLog(server.getInetAddress().getCanonicalHostName() + " : Server started!");
+        LOGGER.info(server.getInetAddress().getCanonicalHostName() + " : Server started!");
     }
 
     @Override
@@ -67,13 +64,13 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
 
     @Override
     public void onSocketAccepted(ServerSocket server, Socket socket) {
-        putLog(socket.getRemoteSocketAddress() + " connected!");
+        LOGGER.info(socket.getRemoteSocketAddress() + " connected!");
         client = new SocketThread(this, "default", socket);
     }
 
     @Override
     public void onServerException(ServerSocketThread thread, Exception e) {
-        putLog("EXCEPTION in ServerSocketThread: " + e.getMessage());
+        LOGGER.warn("EXCEPTION in ServerSocketThread: " + e.getMessage());
         serverSocketThread.interrupt();
     }
 
@@ -85,23 +82,25 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
     /*SocketThread Events*/
     @Override
     public void onSocketThreadStart(SocketThread socketThread) {
-
+        LOGGER.info("Socket started");
     }
 
     @Override
     public void onSocketReady(SocketThread socketThread, Socket socket) {
-        putLog("Socket ready for exchange data");
+        LOGGER.info("Socket ready for exchange data");
     }
 
     @Override
     public void onReceiveMessage(SocketThread socketThread, Socket socket, String msg) {
+        LOGGER.info("Received message from client");
         gsmModule.sendMessage(msg);
     }
 
     @Override
     public void onSocketThreadException(SocketThread socketThread, Exception e) {
-        putLog("EXCEPTION in SocketThread: " + e.getMessage());
+        LOGGER.fatal("EXCEPTION in SocketThread: " + e.getMessage());
         socketThread.close();
+        System.exit(1);
     }
 
     /*MotionSernsor Events*/
@@ -140,24 +139,29 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
     /*GSMModule events*/
     @Override
     public void onModuleStarted(String msg) {
-        putLog("[GSM] started");
+        LOGGER.info("[GSM] started");
     }
 
     @Override
     public void onException(GSMModule module, Exception e) {
-        putLog("[GSM] EXCEPTION:");
-        e.printStackTrace();
+        LOGGER.warn("[GSM] EXCEPTION: " + e.getMessage() + " " + e.getCause());
     }
 
     @Override
     public void onReceivedMessage(GSMModule module, String msg) {
         if (client != null) {
-            client.sendMessage("GMS SAYS: "  + msg);
+            LOGGER.info("[GSM] received message from module: " + msg);
+            client.sendMessage(msg);
         }
     }
 
     @Override
     public void onSendMessage(String msg) {
-        putLog("[GSM] send message: " + msg);
+        LOGGER.info("[GSM] send command to module: " + msg);
+    }
+
+    @Override
+    public void debugMessage(String message) {
+        LOGGER.debug(message);
     }
 }

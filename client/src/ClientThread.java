@@ -1,18 +1,19 @@
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import ru.mydiy.network.SocketThread;
 import ru.mydiy.network.SocketThreadListener;
-
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.Scanner;
 
 public class ClientThread implements SocketThreadListener {
+    private final String host = "192.168.0.123";
+    private final int port = 5277;
     private SocketThread outputThread;
+    private final static Logger LOGGER = LogManager.getLogger();
 
     public static void main(String[] args) {
         ClientThread client = new ClientThread();
-
         Scanner scanner = new Scanner(System.in);
 
         while (true){
@@ -24,7 +25,9 @@ public class ClientThread implements SocketThreadListener {
     private ClientThread(){
         Socket socket = null;
         try {
-            socket = new Socket("192.168.0.123", 5277);
+            LOGGER.info("Connecting to: " + host +":" + port);
+            socket = new Socket(host, port);
+            LOGGER.info("Connected");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -34,17 +37,17 @@ public class ClientThread implements SocketThreadListener {
     /* Socket Events*/
     @Override
     public void onSocketThreadStart(SocketThread socketThread) {
-
+        LOGGER.info("SocketThread with name: \"" + socketThread.getName() + "\" started");
     }
 
     @Override
     public void onSocketReady(SocketThread socketThread, Socket socket) {
-
+        LOGGER.info("Socket " + socket.getRemoteSocketAddress() + ":" + socket.getPort() + " ready");
     }
 
     @Override
-    public void onReceiveMessage(SocketThread socketThread, Socket socket, String msg) {
-        System.out.println(msg);
+    public void onReceiveMessage(SocketThread socketThread, Socket socket, String msg){
+        LOGGER.info("Socket received message: "  + msg);
     }
 
     @Override
