@@ -149,8 +149,9 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
 
     @Override
     public void onReceivedMessage(GSMModule module, String msg) {
+        LOGGER.debug(msg);
         if (client != null) {
-            LOGGER.info("[GSM] received message from module: " + msg);
+            LOGGER.info("[GSM] received message from module:" + msg);
             client.sendMessage(msg);
         }
     }

@@ -49,9 +49,37 @@ public class GSMModule implements SerialDataEventListener{
             msg = event.getAsciiString();
             listener.onReceivedMessage(this, msg);
 
-            int index = msg.length();
-//            String str = msg.substring(1, index);
-            listener.debugMessage(Integer.toBinaryString(index));
+            String str = msg.substring(2, msg.length() - 2);
+
+            if (str.contains("+")){
+                if (str.contains(":")){
+                    int first = str.indexOf('+');
+                    int last = str.indexOf(':');
+
+                    String result = str.substring(first, last);
+                    listener.debugMessage(result);
+
+                    switch (result){
+                        case "+CLCC":
+                            listener.debugMessage("INCOMING CALL DETECTED!");
+
+                            int numberIndexStart = str.indexOf(",\"+") + 2;
+                            int numberIndexEnd = numberIndexStart + 3;
+                            for (int i = numberIndexStart + 3; i < str.length(); i++){
+                                if(!Character.isDigit(str.charAt(i))){
+                                    numberIndexEnd = i;
+                                    break;
+                                }
+                            }
+
+                            String number = str.substring(numberIndexStart, numberIndexEnd);
+                            listener.debugMessage("Number is: " + number);
+                    }
+
+                }
+            }
+
+            //listener.debugMessage(str);
 
         } catch (IOException e) {
             e.printStackTrace();
