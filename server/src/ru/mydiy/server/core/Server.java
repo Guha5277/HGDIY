@@ -34,7 +34,7 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
     Server() {
         MotionSensor monitor1 = new MotionSensor(this, "PIR1", 0);
         //MotionSensor monitor2 = new MotionSensor(this, OrangePiPin.GPIO_02);
-        gsmModule = new GSMModule(this, 1);
+        gsmModule = new GSMModule(this);
         serverSocketThread = new ServerSocketThread(this, port, timeout);
     }
 
@@ -143,7 +143,7 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
     }
 
     @Override
-    public void onException(GSMModule module, Exception e) {
+    public void onException(Exception e) {
         LOGGER.warn("[GSM] EXCEPTION: " + e.getMessage() + " " + e.getCause());
     }
 
