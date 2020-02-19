@@ -2,94 +2,63 @@
 package ru.mydiy.hw;
 
 import com.pi4j.io.serial.*;
+
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 
 public class GSMModule implements SerialDataEventListener {
     private final GSMListener listener;
     private final Serial serial;
     private final String UART = "/dev/ttyS1";
-    private HashMap<String, String> executedCommandList;
-    private boolean availableToSendCommand = false;
-
+    private ArrayList<String> lastReceivedCommandList;
+    private boolean availableToSendCommand;
     private MessageKeeper msKeeper;
-    private ResponceKeeper rsKeeper;
 
     public GSMModule(GSMListener listener) {
         this.listener = listener;
-        executedCommandList = new HashMap<>();
-        //Установление связи с модулем, добавление слушателя на приём данных
+        lastReceivedCommandList = new ArrayList<>();
         serial = SerialFactory.createInstance();
         serial.addListener(this);
         try {
             serial.open(UART, Baud._9600, DataBits._8, Parity.NONE, StopBits._1, FlowControl.NONE);
-            listener.onModuleStarted("GSM module started");
+            availableToSendCommand = true;
+            listener.onModuleStarted(this);
         } catch (IOException e) {
             listener.onException(e);
         }
-    }
-
-    private synchronized void setAvailable(boolean available) {
-        availableToSendCommand = available;
-    }
-
-    //Отправка сообщения модулю
-    public synchronized void sendMessage(String msg) {
-        if (availableToSendCommand) {
-            try {
-                availableToSendCommand = false;
-                serial.writeln(msg);
-                listener.onSendMessage(msg);
-            } catch (IOException e) {
-                listener.onException(e);
-            }
-        } else {
-            if (msKeeper.isAlive()) {
-                msKeeper.addCommand(msg);
-            } else {
-                msKeeper = new MessageKeeper();
-                msKeeper.addCommand(msg);
-                msKeeper.start();
-            }
-        }
-
     }
 
     /*TODO - метод для дешифровки сообщения от GSM-модуля и вычленения главного из сообщения*/
     private synchronized void decodeMessage(String message) {
         //Получение строки без символов <CR><LF> (перве два символа в начале и конце сообщения)
         String resultString = message.substring(2, message.length() - 2);
+        char firstChar = resultString.charAt(0); //Получение первого символа, для идентификации типа уведомления от модуля
 
-        char firstChar = resultString.charAt(0);
-
-        if (firstChar == 0x2b) { //Если ответ начинается с символа '+'
-
-            int endIndex = resultString.indexOf(':');
-            if (endIndex == -1) {
-                listener.debugMessage("Ошибка декодирования сообщения от модуля (отсутствует ':' )");
-                return;
-            }
-
-            String command = resultString.substring(0, endIndex);
+        //Если firstChar начинается с символа '+'
+        if (firstChar == 0x2b) {
+            String command = getCommand(resultString);
+            listener.debugMessage("Command:" + command);
             switch (command) {
                 case SIM800.CALL:
-                    /*TODO - исходящий(?) звонок*/
-                    int numberIndexStart = resultString.indexOf(",\"+") + 2;
-                    if (numberIndexStart == -1) {
-                        listener.debugMessage("Ошибка получения номера из входящего звонка");
-                        return;
-                    }
-                    int numberIndexEnd = numberIndexStart + 3;
-                    for (int i = numberIndexStart + 3; i < resultString.length(); i++) {
-                        if (!Character.isDigit(resultString.charAt(i))) {
-                            numberIndexEnd = i;
-                            break;
+                    /*TODO - звонок*/
+                    lastReceivedCommandList.add(SIM800.CALL_TO);
+                    if (resultString.contains("\n")) {
+                        String sumbessage = resultString.substring(resultString.indexOf("\n") + 3);
+                        listener.debugMessage("Submessage:" + sumbessage);
+                        switch (sumbessage) {
+                            case SIM800.INCOMING_CALL:
+                                listener.onIncomingCall(getNumber(resultString));
+                                sendMessage(SIM800.DISCARD_CALL, "");
+                                break;
+                            case SIM800.BUSY:
+                            case SIM800.NO_CARRIER:
+                                listener.onOutcomingCallDelivered(getNumber(resultString));
+                                break;
+                            case SIM800.NO_ANSWER:
+                                listener.onOutcomingCallFailed(getNumber(resultString));
+                                break;
                         }
                     }
-
-                    String number = resultString.substring(numberIndexStart, numberIndexEnd);
-                    listener.onIncomingCall(number);
                     break;
                 case SIM800.ERROR:
                     /*TODO - ошибка от модуля*/
@@ -97,29 +66,41 @@ public class GSMModule implements SerialDataEventListener {
                 case SIM800.USSD:
                     /*TODO - ответ на USSD запрос*/
                     break;
-                    /*TODO - другие уведомления?*/
+                /*TODO - другие уведомления?*/
             }
 
+            //Если firstChar начинается с символа A-Z или a-z
         } else if (firstChar >= 0x41 && firstChar <= 0x5a || firstChar >= 0x61 && firstChar <= 0x79) { //Если начинается с A-Z или a-z
+            if (resultString.contains("\n")) {
+
+            }
             switch (resultString) {
+                case SIM800.OK:
+                    lastReceivedCommandList.add(SIM800.OK);
+                    break;
                 case SIM800.READY:
                     /*TODO - уведомление о готовности работы, появляется только после выключения автоопределения скорости (BaudRate), после включения питания*/
+                    listener.debugMessage("READY");
+                    break;
                 case SIM800.PWRDWN:
                     /*TODO - уведолмение о выключении устройства (после замыкания соотв. контактов или через AT команду AT+CPOWD=1) */
-                case SIM800.INCOMING_CALL:
-                    /*TODO - уведомление о входящем звонке*/
+                    listener.debugMessage("POWER DOWN");
                     break;
                 case SIM800.UNDER_VOLTAGE_PWD:
                     /*TODO - выключение модуля, низкое напряжение*/
+                    listener.debugMessage("UNDER VOLTAGE POWER DOWN!");
                     break;
                 case SIM800.UNDER_VOLTAGE_WARN:
                     /*TODO - предупреждение о низком напряжении*/
+                    listener.debugMessage("UNDER VOLTAGE WARNING!");
                     break;
                 case SIM800.OVER_VOLTAGE_PWD:
                     /*TODO - выключение модуля, высокое напряжение*/
+                    listener.debugMessage("OVER VOLTAGE POWER DOWN");
                     break;
                 case SIM800.OVER_VOLTAGE_WARN:
                     /*TODO - предупреждение о высоком напряжении*/
+                    listener.debugMessage("OVER VOLTAGE WARNING");
                     break;
             }
         } else {
@@ -137,9 +118,50 @@ public class GSMModule implements SerialDataEventListener {
 
     }
 
+    private String getNumber(String incomingString) {
+        int indexStart = incomingString.indexOf(",\"+");
+        int indexEnd = incomingString.indexOf("\",");
+        if (indexStart == -1 || indexEnd == -1) {
+            listener.debugMessage("Ошибка получения номера из сообщения!");
+            return "";
+        }
+        return incomingString.substring(indexStart + 2, indexEnd);
+    }
+
+    private String getCommand(String incomingString){
+        int endIndex = incomingString.indexOf(':');
+        if (endIndex == -1) { //проверка на ошибку
+            listener.debugMessage("Ошибка декодирования сообщения от модуля (отсутствует ':' )");
+            return "";
+        }
+        return incomingString.substring(0, endIndex);
+    }
+
     /*TODO - метод звонка*/
     public void call(String number) {
-        sendMessage(SIM800.OUTCOMING_CALL + number + ";");
+        sendMessage(SIM800.CALL_TO, number + ";");
+    }
+
+    //Отправка сообщения модулю
+    public synchronized void sendMessage(String header, String command) {
+        if (availableToSendCommand) {
+            try {
+                availableToSendCommand = false;
+                new ResponceKeeper(header).start();
+                serial.writeln(header + command);
+                listener.onSendMessage(header + command);
+            } catch (IOException e) {
+                listener.onException(e);
+            }
+        } else {
+            if (msKeeper != null && msKeeper.isAlive()) {
+                msKeeper.addCommand(header, command);
+            } else {
+                msKeeper = new MessageKeeper();
+                msKeeper.addCommand(header, command);
+                msKeeper.start();
+            }
+        }
     }
 
     //Слушатель на приём сообщений от модуля
@@ -162,51 +184,77 @@ public class GSMModule implements SerialDataEventListener {
 
         ResponceKeeper(String command) {
             this.command = command;
-            start();
+            listener.debugMessage("ResponceKeeper command: " + command);
         }
 
         @Override
         public void run() {
-            Long timer = System.currentTimeMillis();
-            while (System.currentTimeMillis() - timer < 3000) {
-                if (executedCommandList.containsKey(command)) {
-                    executedCommandList.remove(command);
-
-                    //command.equals();
-                }
-            }
-        }
-    }
-
-        /*TODO класс, управляющий очередью отправки сообщений железу*/
-        class MessageKeeper extends Thread {
-            ArrayList<String> commands;
-
-            MessageKeeper() {
-                commands = new ArrayList<>();
-            }
-
-            @Override
-            public void run() {
-                while (!isInterrupted()) {
-                    if (commands.isEmpty()) {
-                        interrupt();
-                    } else if (availableToSendCommand) {
-                        sendMessage(commands.get(0));
-                        commands.remove(0);
-                    } else {
-                        try {
-                            sleep(100);
-                        } catch (InterruptedException e) {
-                            listener.onException(e);
-                            interrupt();
-                        }
+            long timer = System.currentTimeMillis();
+            while (!isInterrupted()) {
+                if (lastReceivedCommandList.contains(command)) {
+                    closeRequest(command);
+                } else if (lastReceivedCommandList.contains(SIM800.OK)){
+                    closeRequest(SIM800.OK);
+                } else if (System.currentTimeMillis() - timer > 10000) {
+                    listener.debugMessage("Таймаут ожидания ответа от модуля");
+                    availableToSendCommand = true;
+                    interrupt();
+                } else {
+                    try {
+                        sleep(100);
+                    } catch (InterruptedException e) {
+                        listener.onException(e);
                     }
                 }
             }
+        }
 
-            public void addCommand(String command) {
-                this.commands.add(command);
-            }
+        private void closeRequest(String command){
+            listener.debugMessage("Ответ на команду: " + command);
+            lastReceivedCommandList.remove(command);
+            availableToSendCommand = true;
+            interrupt();
         }
     }
+
+    /*TODO класс, управляющий очередью отправки сообщений железу*/
+    class MessageKeeper extends Thread {
+        ArrayList<String> headers;
+        ArrayList<String> commands;
+
+        MessageKeeper() {
+            headers = new ArrayList<>();
+            commands = new ArrayList<>();
+        }
+
+        @Override
+        public void run() {
+            while (!isInterrupted()) {
+                if (commands.isEmpty()) {
+                    listener.debugMessage("Очередь отправки модулю пуста");
+                    interrupt();
+                } else if (availableToSendCommand) {
+                    listener.debugMessage("Отправка команды из очереди...");
+                    sendMessage(headers.get(0), commands.get(0));
+                    headers.remove(0);
+                    commands.remove(0);
+                } else {
+                    try {
+                        sleep(100);
+                    } catch (InterruptedException e) {
+                        listener.onException(e);
+                        interrupt();
+                    }
+                }
+            }
+        }
+
+        public void addCommand(String header, String command) {
+
+            if (this.headers.contains(header) && this.commands.contains(command)) return;
+
+            this.headers.add(header);
+            this.commands.add(command);
+        }
+    }
+}

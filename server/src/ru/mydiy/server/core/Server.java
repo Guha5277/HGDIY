@@ -8,8 +8,10 @@ import ru.mydiy.network.ServerSocketListener;
 import ru.mydiy.network.ServerSocketThread;
 import ru.mydiy.network.SocketThread;
 import ru.mydiy.network.SocketThreadListener;
+
 import java.net.ServerSocket;
 import java.net.Socket;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -93,7 +95,15 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
     @Override
     public void onReceiveMessage(SocketThread socketThread, Socket socket, String msg) {
         LOGGER.info("Received message from client");
-        gsmModule.sendMessage(msg);
+        switch (msg) {
+            case "call":
+                LOGGER.info("Command - call");
+                gsmModule.call("+79994693778");
+                break;
+            default:
+                gsmModule.sendMessage(msg, "");
+        }
+        //gsmModule.sendMessage(msg, "");
     }
 
     @Override
@@ -106,8 +116,8 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
     /*MotionSernsor Events*/
     @Override
     public synchronized void motionState(MotionSensor monitor, boolean state) {
-        if (client != null){
-            if (state){
+        if (client != null) {
+            if (state) {
                 client.sendMessage("PIR " + monitor.getName() + " IS HIGH");
             } else {
                 client.sendMessage("PIR " + monitor.getName() + " IS LOW");
@@ -117,14 +127,14 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
 
     @Override
     public synchronized void onException(MotionSensor monitor, Exception e) {
-        if (client != null){
+        if (client != null) {
             client.sendMessage("EXCEPTION in MonitorSensor: " + e.getMessage());
         }
     }
 
     @Override
     public synchronized void activityIsGone(MotionSensor monitor, long overallTime) {
-        if (client != null){
+        if (client != null) {
             client.sendMessage("Activity is gone. Overall time of invasion is: " + overallTime + "s");
         }
     }
@@ -138,7 +148,7 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
 
     /*GSMModule events*/
     @Override
-    public void onModuleStarted(String msg) {
+    public void onModuleStarted(GSMModule module) {
         LOGGER.info("[GSM] started");
     }
 
@@ -149,9 +159,8 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
 
     @Override
     public void onReceivedMessage(GSMModule module, String msg) {
-        LOGGER.debug(msg);
+        LOGGER.info("[GSM] received message from module:" + msg);
         if (client != null) {
-            LOGGER.info("[GSM] received message from module:" + msg);
             client.sendMessage(msg);
         }
     }
@@ -164,5 +173,20 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
     @Override
     public void debugMessage(String message) {
         LOGGER.debug(message);
+    }
+
+    @Override
+    public void onIncomingCall(String number) {
+        LOGGER.info("Incoming call: " + number);
+    }
+
+    @Override
+    public void onOutcomingCallDelivered(String number) {
+        LOGGER.info("Outcoming call delivered: " + number);
+    }
+
+    @Override
+    public void onOutcomingCallFailed(String number) {
+        LOGGER.info("Outcoming call no answer: " + number);
     }
 }
