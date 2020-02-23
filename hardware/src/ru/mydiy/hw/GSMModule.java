@@ -36,32 +36,36 @@ public class GSMModule implements SerialDataEventListener {
 
         //Если firstChar начинается с символа '+'
         if (firstChar == 0x2b) {
-            String command = getCommand(resultString);
+            String command = getCommand(resultString);   //Получение команды
             listener.debugMessage("Command:" + command);
             switch (command) {
                 case SIM800.CALL:
                     /*TODO - звонок*/
                     lastReceivedCommandList.add(SIM800.CALL_TO);
+                    //Если в сообщении присутствует дополнительная информация
                     if (resultString.contains("\n")) {
-                        String sumbessage = resultString.substring(resultString.indexOf("\n") + 3);
-                        listener.debugMessage("Submessage:" + sumbessage);
-                        switch (sumbessage) {
+                        String submessage = resultString.substring(resultString.indexOf("\n") + 3);
+                        listener.debugMessage("Submessage:" + submessage);
+                        switch (submessage) {
+                            //Входящий звонок
                             case SIM800.INCOMING_CALL:
                                 listener.onIncomingCall(getNumber(resultString));
                                 sendMessage(SIM800.DISCARD_CALL, "");
                                 break;
+                            //Вызов сброшен (без снятия трубки и после снятия)
                             case SIM800.BUSY:
                             case SIM800.NO_CARRIER:
                                 listener.onOutcomingCallDelivered(getNumber(resultString));
                                 break;
+                            //Нет ответа на звонок
                             case SIM800.NO_ANSWER:
                                 listener.onOutcomingCallFailed(getNumber(resultString));
                                 break;
                         }
+                    } else {
+                        //undefined call
+                        /*TODO добавить определение типа звонка по параметрам из уведомлеия*/
                     }
-                    break;
-                case SIM800.ERROR:
-                    /*TODO - ошибка от модуля*/
                     break;
                 case SIM800.USSD:
                     /*TODO - ответ на USSD запрос*/
@@ -71,9 +75,6 @@ public class GSMModule implements SerialDataEventListener {
 
             //Если firstChar начинается с символа A-Z или a-z
         } else if (firstChar >= 0x41 && firstChar <= 0x5a || firstChar >= 0x61 && firstChar <= 0x79) { //Если начинается с A-Z или a-z
-            if (resultString.contains("\n")) {
-
-            }
             switch (resultString) {
                 case SIM800.OK:
                     lastReceivedCommandList.add(SIM800.OK);
@@ -118,26 +119,28 @@ public class GSMModule implements SerialDataEventListener {
 
     }
 
+    //Получение комманды из строки-уведомления
+    private String getCommand(String incomingString){
+        int endIndex = incomingString.indexOf(':');
+        if (endIndex == -1) { //проверка на ошибку
+            listener.debugMessage("Ошибка декодирования сообщения от модуля (отсутствует ':' )");
+            throw new IllegalArgumentException("Incorrect input string");
+        }
+        return incomingString.substring(0, endIndex);
+    }
+
+    //Получение номера из строки-уведомления
     private String getNumber(String incomingString) {
         int indexStart = incomingString.indexOf(",\"+");
         int indexEnd = incomingString.indexOf("\",");
         if (indexStart == -1 || indexEnd == -1) {
             listener.debugMessage("Ошибка получения номера из сообщения!");
-            return "";
+            throw new IllegalArgumentException("Incorrect input string");
         }
         return incomingString.substring(indexStart + 2, indexEnd);
     }
 
-    private String getCommand(String incomingString){
-        int endIndex = incomingString.indexOf(':');
-        if (endIndex == -1) { //проверка на ошибку
-            listener.debugMessage("Ошибка декодирования сообщения от модуля (отсутствует ':' )");
-            return "";
-        }
-        return incomingString.substring(0, endIndex);
-    }
-
-    /*TODO - метод звонка*/
+    //Звонок по указанному номеру
     public void call(String number) {
         sendMessage(SIM800.CALL_TO, number + ";");
     }
@@ -155,16 +158,16 @@ public class GSMModule implements SerialDataEventListener {
             }
         } else {
             if (msKeeper != null && msKeeper.isAlive()) {
-                msKeeper.addCommand(header, command);
+                msKeeper.addCommandToQueue(header, command);
             } else {
                 msKeeper = new MessageKeeper();
-                msKeeper.addCommand(header, command);
+                msKeeper.addCommandToQueue(header, command);
                 msKeeper.start();
             }
         }
     }
 
-    //Слушатель на приём сообщений от модуля
+    //Слушатель присланных модулем сообщений
     @Override
     public void dataReceived(SerialDataEvent event) {
         try {
@@ -178,7 +181,7 @@ public class GSMModule implements SerialDataEventListener {
         }
     }
 
-    /*TODO класс, следящий за получением ответа от железа, о статусе исполнения команды*/
+    //Класс проверки ответа на отправленную команду
     class ResponceKeeper extends Thread {
         String command;
 
@@ -217,7 +220,7 @@ public class GSMModule implements SerialDataEventListener {
         }
     }
 
-    /*TODO класс, управляющий очередью отправки сообщений железу*/
+    //Очередь отправки сообщений модулю
     class MessageKeeper extends Thread {
         ArrayList<String> headers;
         ArrayList<String> commands;
@@ -249,10 +252,8 @@ public class GSMModule implements SerialDataEventListener {
             }
         }
 
-        public void addCommand(String header, String command) {
-
+        private void addCommandToQueue(String header, String command) {
             if (this.headers.contains(header) && this.commands.contains(command)) return;
-
             this.headers.add(header);
             this.commands.add(command);
         }
