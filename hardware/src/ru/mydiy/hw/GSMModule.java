@@ -62,15 +62,15 @@ public class GSMModule implements SerialDataEventListener {
                                 listener.onOutcomingCallFailed(getNumber(resultString));
                                 break;
                         }
-                    } else {
-                        //undefined call
-                        /*TODO добавить определение типа звонка по параметрам из уведомлеия*/
                     }
                     break;
                 case SIM800.USSD:
                     /*TODO - ответ на USSD запрос*/
                     break;
                 /*TODO - другие уведомления?*/
+                case SIM800.OPERATOR:
+                    lastReceivedCommandList.add(SIM800.OK);
+                    break;
             }
 
             //Если firstChar начинается с символа A-Z или a-z
@@ -115,8 +115,8 @@ public class GSMModule implements SerialDataEventListener {
     }
 
     /*TODO - метод запроса оператора*/
-    public void getOperator() {
-
+    public void operator() {
+        sendMessage("AT", SIM800.OPERATOR);
     }
 
     //Получение комманды из строки-уведомления
@@ -140,6 +140,23 @@ public class GSMModule implements SerialDataEventListener {
         return incomingString.substring(indexStart + 2, indexEnd);
     }
 
+    private String getOperator(String incomingString){
+        int indexStart = incomingString.indexOf(",\"");
+        if(indexStart == -1) {
+            listener.debugMessage("Ошибка получения информации об операторе!");
+            throw new IllegalArgumentException("Incorrect input string");
+        }
+        indexStart += 2;
+        int indexEnd = indexStart + 1;
+        for (int i = indexStart; i < incomingString.length(); i++){
+            if (incomingString.charAt(i) == 0x22) {
+                indexEnd = i;
+                break;
+            }
+        }
+        return incomingString.substring(indexStart, indexEnd);
+    }
+
     //Звонок по указанному номеру
     public void call(String number) {
         sendMessage(SIM800.CALL_TO, number + ";");
@@ -150,7 +167,7 @@ public class GSMModule implements SerialDataEventListener {
         if (availableToSendCommand) {
             try {
                 availableToSendCommand = false;
-                new ResponceKeeper(header).start();
+                new ResponseKeeper(header).start();
                 serial.writeln(header + command);
                 listener.onSendMessage(header + command);
             } catch (IOException e) {
@@ -182,12 +199,12 @@ public class GSMModule implements SerialDataEventListener {
     }
 
     //Класс проверки ответа на отправленную команду
-    class ResponceKeeper extends Thread {
+    class ResponseKeeper extends Thread {
         String command;
 
-        ResponceKeeper(String command) {
+        ResponseKeeper(String command) {
             this.command = command;
-            listener.debugMessage("ResponceKeeper command: " + command);
+            listener.debugMessage("ResponseKeeper command: " + command);
         }
 
         @Override
