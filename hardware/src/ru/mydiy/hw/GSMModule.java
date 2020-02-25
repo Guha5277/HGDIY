@@ -9,34 +9,38 @@ import java.util.ArrayList;
 public class GSMModule implements SerialDataEventListener {
     private final GSMListener listener;
     private final Serial serial;
-    private final String UART = "/dev/ttyS1";
+    private final String SERIAL_PORT_ADDRESS = "/dev/ttyS1";
     private ArrayList<String> lastReceivedCommandList;
     private boolean availableToSendCommand;
     private MessageKeeper msKeeper;
 
     public GSMModule(GSMListener listener) {
         this.listener = listener;
-        lastReceivedCommandList = new ArrayList<>();
         serial = SerialFactory.createInstance();
+        initModule();
+    }
+
+    private void initModule(){
+        lastReceivedCommandList = new ArrayList<>();        
         serial.addListener(this);
         try {
-            serial.open(UART, Baud._9600, DataBits._8, Parity.NONE, StopBits._1, FlowControl.NONE);
+            serial.open(SERIAL_PORT_ADDRESS, Baud._9600, DataBits._8, Parity.NONE, StopBits._1, FlowControl.NONE);
             availableToSendCommand = true;
             listener.onModuleStarted(this);
         } catch (IOException e) {
             listener.onException(e);
         }
     }
-
+    
     /*TODO - метод для дешифровки сообщения от GSM-модуля и вычленения главного из сообщения*/
     private synchronized void decodeMessage(String message) {
-        //Получение строки без символов <CR><LF> (перве два символа в начале и конце сообщения)
+        //Получение строки без символов <CR><LF> (первые два символа в начале и конце сообщения)
         String resultString = message.substring(2, message.length() - 2);
         char firstChar = resultString.charAt(0); //Получение первого символа, для идентификации типа уведомления от модуля
 
         //Если firstChar начинается с символа '+'
         if (firstChar == 0x2b) {
-            String command = getCommand(resultString);   //Получение команды
+            String command = getSubString(resultString, SIM800.COMMAND_SEPARATOR);   //Получение команды
             listener.debugMessage("Command:" + command);
             switch (command) {
                 case SIM800.CALL:
@@ -49,17 +53,17 @@ public class GSMModule implements SerialDataEventListener {
                         switch (submessage) {
                             //Входящий звонок
                             case SIM800.INCOMING_CALL:
-                                listener.onIncomingCall(getNumber(resultString));
+                                listener.onIncomingCall(getSubString(resultString, SIM800.NUMBER_BEGIN_SEPARATOR, SIM800.NUMBER_END_SEPARATOR));
                                 sendMessage(SIM800.DISCARD_CALL, "");
                                 break;
                             //Вызов сброшен (без снятия трубки и после снятия)
                             case SIM800.BUSY:
                             case SIM800.NO_CARRIER:
-                                listener.onOutcomingCallDelivered(getNumber(resultString));
+                                listener.onOutcomingCallDelivered(getSubString(resultString, SIM800.NUMBER_BEGIN_SEPARATOR, SIM800.NUMBER_END_SEPARATOR));
                                 break;
                             //Нет ответа на звонок
                             case SIM800.NO_ANSWER:
-                                listener.onOutcomingCallFailed(getNumber(resultString));
+                                listener.onOutcomingCallFailed(getSubString(resultString, SIM800.NUMBER_BEGIN_SEPARATOR, SIM800.NUMBER_END_SEPARATOR));
                                 break;
                         }
                     }
@@ -116,46 +120,29 @@ public class GSMModule implements SerialDataEventListener {
 
     /*TODO - метод запроса оператора*/
     public void operator() {
-        sendMessage("AT", SIM800.OPERATOR);
+        sendMessage("AT", SIM800.OPERATOR + '?');
     }
 
-    //Получение комманды из строки-уведомления
-    private String getCommand(String incomingString){
-        int endIndex = incomingString.indexOf(':');
-        if (endIndex == -1) { //проверка на ошибку
+
+    private String getSubString(String incomingString, String separator){
+        int endIndex = incomingString.indexOf(separator);
+        if (endIndex == -1) {
             listener.debugMessage("Ошибка декодирования сообщения от модуля (отсутствует ':' )");
             throw new IllegalArgumentException("Incorrect input string");
         }
         return incomingString.substring(0, endIndex);
     }
 
-    //Получение номера из строки-уведомления
-    private String getNumber(String incomingString) {
-        int indexStart = incomingString.indexOf(",\"+");
-        int indexEnd = incomingString.indexOf("\",");
+    private String getSubString(String incomingString, String separatorStart, String separatorEnd){
+        int indexStart = incomingString.indexOf(separatorStart);
+        int indexEnd = incomingString.indexOf(separatorEnd);
         if (indexStart == -1 || indexEnd == -1) {
             listener.debugMessage("Ошибка получения номера из сообщения!");
             throw new IllegalArgumentException("Incorrect input string");
         }
-        return incomingString.substring(indexStart + 2, indexEnd);
+        return incomingString.substring(indexStart + separatorStart.length(), indexEnd);
     }
 
-    private String getOperator(String incomingString){
-        int indexStart = incomingString.indexOf(",\"");
-        if(indexStart == -1) {
-            listener.debugMessage("Ошибка получения информации об операторе!");
-            throw new IllegalArgumentException("Incorrect input string");
-        }
-        indexStart += 2;
-        int indexEnd = indexStart + 1;
-        for (int i = indexStart; i < incomingString.length(); i++){
-            if (incomingString.charAt(i) == 0x22) {
-                indexEnd = i;
-                break;
-            }
-        }
-        return incomingString.substring(indexStart, indexEnd);
-    }
 
     //Звонок по указанному номеру
     public void call(String number) {
