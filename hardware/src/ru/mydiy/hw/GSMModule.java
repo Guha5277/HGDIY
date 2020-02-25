@@ -17,10 +17,10 @@ public class GSMModule implements SerialDataEventListener {
     public GSMModule(GSMListener listener) {
         this.listener = listener;
         serial = SerialFactory.createInstance();
-        initModule();
+        initializeModule();
     }
 
-    private void initModule(){
+    private void initializeModule(){
         lastReceivedCommandList = new ArrayList<>();        
         serial.addListener(this);
         try {
@@ -33,37 +33,36 @@ public class GSMModule implements SerialDataEventListener {
     }
     
     /*TODO - метод для дешифровки сообщения от GSM-модуля и вычленения главного из сообщения*/
-    private synchronized void decodeMessage(String message) {
-        //Получение строки без символов <CR><LF> (первые два символа в начале и конце сообщения)
-        String resultString = message.substring(2, message.length() - 2);
-        char firstChar = resultString.charAt(0); //Получение первого символа, для идентификации типа уведомления от модуля
+    private synchronized void decodeMessage(String message) throws IndexOutOfBoundsException{
+        String subMessage = message.substring(2, message.length() - 2);
+        char firstChar = subMessage.charAt(0); //Получение первого символа, для идентификации типа уведомления от модуля
 
         //Если firstChar начинается с символа '+'
         if (firstChar == 0x2b) {
-            String command = getSubString(resultString, SIM800.COMMAND_SEPARATOR);   //Получение команды
+            String command = subMessage.substring(0, subMessage.indexOf(SIM800.COMMAND_SEPARATOR));
             listener.debugMessage("Command:" + command);
             switch (command) {
                 case SIM800.CALL:
-                    /*TODO - звонок*/
                     lastReceivedCommandList.add(SIM800.CALL_TO);
                     //Если в сообщении присутствует дополнительная информация
-                    if (resultString.contains("\n")) {
-                        String submessage = resultString.substring(resultString.indexOf("\n") + 3);
-                        listener.debugMessage("Submessage:" + submessage);
-                        switch (submessage) {
+                    if (subMessage.contains("\n")) {
+                        String subCommand = subMessage.substring(subMessage.indexOf("\n") + 3);
+                        String number = subMessage.substring(subMessage.indexOf(SIM800.NUMBER_BEGIN_SEPARATOR) + 2, subMessage.indexOf(SIM800.NUMBER_END_SEPARATOR));
+                        listener.debugMessage("Subcommand:" + subCommand);
+                        switch (subCommand) {
                             //Входящий звонок
                             case SIM800.INCOMING_CALL:
-                                listener.onIncomingCall(getSubString(resultString, SIM800.NUMBER_BEGIN_SEPARATOR, SIM800.NUMBER_END_SEPARATOR));
+                                listener.onIncomingCall(number);
                                 sendMessage(SIM800.DISCARD_CALL, "");
                                 break;
                             //Вызов сброшен (без снятия трубки и после снятия)
                             case SIM800.BUSY:
                             case SIM800.NO_CARRIER:
-                                listener.onOutcomingCallDelivered(getSubString(resultString, SIM800.NUMBER_BEGIN_SEPARATOR, SIM800.NUMBER_END_SEPARATOR));
+                                listener.onOutcomingCallDelivered(number);
                                 break;
                             //Нет ответа на звонок
                             case SIM800.NO_ANSWER:
-                                listener.onOutcomingCallFailed(getSubString(resultString, SIM800.NUMBER_BEGIN_SEPARATOR, SIM800.NUMBER_END_SEPARATOR));
+                                listener.onOutcomingCallFailed(number);
                                 break;
                         }
                     }
@@ -79,32 +78,26 @@ public class GSMModule implements SerialDataEventListener {
 
             //Если firstChar начинается с символа A-Z или a-z
         } else if (firstChar >= 0x41 && firstChar <= 0x5a || firstChar >= 0x61 && firstChar <= 0x79) { //Если начинается с A-Z или a-z
-            switch (resultString) {
+            switch (subMessage) {
                 case SIM800.OK:
                     lastReceivedCommandList.add(SIM800.OK);
                     break;
                 case SIM800.READY:
-                    /*TODO - уведомление о готовности работы, появляется только после выключения автоопределения скорости (BaudRate), после включения питания*/
                     listener.debugMessage("READY");
                     break;
                 case SIM800.PWRDWN:
-                    /*TODO - уведолмение о выключении устройства (после замыкания соотв. контактов или через AT команду AT+CPOWD=1) */
                     listener.debugMessage("POWER DOWN");
                     break;
                 case SIM800.UNDER_VOLTAGE_PWD:
-                    /*TODO - выключение модуля, низкое напряжение*/
                     listener.debugMessage("UNDER VOLTAGE POWER DOWN!");
                     break;
                 case SIM800.UNDER_VOLTAGE_WARN:
-                    /*TODO - предупреждение о низком напряжении*/
                     listener.debugMessage("UNDER VOLTAGE WARNING!");
                     break;
                 case SIM800.OVER_VOLTAGE_PWD:
-                    /*TODO - выключение модуля, высокое напряжение*/
                     listener.debugMessage("OVER VOLTAGE POWER DOWN");
                     break;
                 case SIM800.OVER_VOLTAGE_WARN:
-                    /*TODO - предупреждение о высоком напряжении*/
                     listener.debugMessage("OVER VOLTAGE WARNING");
                     break;
             }
@@ -122,27 +115,6 @@ public class GSMModule implements SerialDataEventListener {
     public void operator() {
         sendMessage("AT", SIM800.OPERATOR + '?');
     }
-
-
-    private String getSubString(String incomingString, String separator){
-        int endIndex = incomingString.indexOf(separator);
-        if (endIndex == -1) {
-            listener.debugMessage("Ошибка декодирования сообщения от модуля (отсутствует ':' )");
-            throw new IllegalArgumentException("Incorrect input string");
-        }
-        return incomingString.substring(0, endIndex);
-    }
-
-    private String getSubString(String incomingString, String separatorStart, String separatorEnd){
-        int indexStart = incomingString.indexOf(separatorStart);
-        int indexEnd = incomingString.indexOf(separatorEnd);
-        if (indexStart == -1 || indexEnd == -1) {
-            listener.debugMessage("Ошибка получения номера из сообщения!");
-            throw new IllegalArgumentException("Incorrect input string");
-        }
-        return incomingString.substring(indexStart + separatorStart.length(), indexEnd);
-    }
-
 
     //Звонок по указанному номеру
     public void call(String number) {
@@ -179,8 +151,7 @@ public class GSMModule implements SerialDataEventListener {
             listener.onReceivedMessage(this, msg);
             decodeMessage(msg);
 
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (IOException | IndexOutOfBoundsException e) {
             listener.onException(e);
         }
     }
