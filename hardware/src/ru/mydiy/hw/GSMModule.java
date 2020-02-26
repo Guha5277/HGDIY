@@ -207,6 +207,8 @@ public class GSMModule implements SerialDataEventListener {
             }
             if (temp >= 0x30 && temp <= 0x39 || temp == 0x2E){
                 sb.append(temp);
+            } else if (sb.length() > 0){
+                break;
             }
         }
 
