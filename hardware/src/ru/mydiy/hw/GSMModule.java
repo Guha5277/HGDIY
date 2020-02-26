@@ -77,7 +77,7 @@ public class GSMModule implements SerialDataEventListener {
                 case SIM800.USSD:
                     /*TODO - ответ на USSD запрос*/
                     listener.debugMessage(subMessage);
-                    String cussdMessage = subMessage.substring(subMessage.indexOf(SIM800.CUSD_BEGIN_SEPARATOR) + 2, subMessage.indexOf(SIM800.CUSD_END_SEPARATOR));
+                    String cussdMessage = subMessage.substring(subMessage.indexOf(SIM800.CUSD_BEGIN_SEPARATOR) + 3, subMessage.indexOf(SIM800.CUSD_END_SEPARATOR));
                     listener.debugMessage(cussdMessage);
                     if (!cussdMessage.contains(" ")){
                         cussdMessage = UCS2toString(cussdMessage);
