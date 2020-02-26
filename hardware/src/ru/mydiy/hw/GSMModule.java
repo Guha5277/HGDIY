@@ -12,6 +12,7 @@ public class GSMModule implements SerialDataEventListener {
     private final String SERIAL_PORT_ADDRESS = "/dev/ttyS1";
     private ArrayList<String> lastReceivedCommandList;
     private boolean availableToSendCommand;
+    private StringBuilder compileString;
     private MessageKeeper msKeeper;
 
     public GSMModule(GSMListener listener) {
@@ -26,6 +27,7 @@ public class GSMModule implements SerialDataEventListener {
         try {
             serial.open(SERIAL_PORT_ADDRESS, Baud._9600, DataBits._8, Parity.NONE, StopBits._1, FlowControl.NONE);
             availableToSendCommand = true;
+            compileString = new StringBuilder();
             listener.onModuleStarted(this);
         } catch (IOException e) {
             listener.onException(e);
@@ -148,12 +150,25 @@ public class GSMModule implements SerialDataEventListener {
     public void dataReceived(SerialDataEvent event) {
         try {
             String msg = event.getAsciiString();
-            listener.debugMessage(Integer.toString(msg.length()));
             listener.onReceivedMessage(this, msg);
-            decodeMessage(msg);
-
+            if (msg.length() == 64 || compileString.length() > 0){
+                listener.debugMessage(Integer.toString(msg.length()));
+                compileMessage(msg);
+            } else {
+                decodeMessage(msg);
+            }
         } catch (IOException | IndexOutOfBoundsException e) {
             listener.onException(e);
+        }
+    }
+
+    private synchronized void compileMessage(String string){
+        if (string.length() == 64){
+            compileString.append(string);
+        } else {
+            compileString.append(string);
+            decodeMessage(compileString.toString());
+            compileString.delete(0, compileString.length());
         }
     }
 
