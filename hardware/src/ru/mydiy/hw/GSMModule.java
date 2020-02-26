@@ -81,8 +81,6 @@ public class GSMModule implements SerialDataEventListener {
                         cussdMessage = UCS2toString(cussdMessage);
                     }
                     listener.currentBalance(stringToFloat(cussdMessage));
-                    listener.debugMessage(String.valueOf(Float.parseFloat(cussdMessage)));
-
                     break;
                 /*TODO - другие уведомления?*/
                 case SIM800.OPERATOR:
