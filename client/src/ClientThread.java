@@ -24,30 +24,41 @@ public class ClientThread implements SocketThreadListener {
 
     private ClientThread(){
         Socket socket = null;
-        try {
-            LOGGER.info("Connecting to: " + host +":" + port);
-            socket = new Socket(host, port);
-            LOGGER.info("Connected");
-        } catch (IOException e) {
-            e.printStackTrace();
+        int i = 0;
+        while (i != 10){
+            try {
+                //LOGGER.info("Connecting to: " + host +":" + port);
+                socket = new Socket(host, port);
+                outputThread = new SocketThread(this, "Client", socket);
+                LOGGER.info("Подключён!");
+                break;
+                //LOGGER.info("Connected");
+            } catch (IOException e) {
+                LOGGER.info("Не могу подключиться к удалённому серверу. Попытка " + (i + 1));
+                i++;
+            }
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
-        outputThread = new SocketThread(this, "Client", socket);
     }
 
     /* Socket Events*/
     @Override
     public void onSocketThreadStart(SocketThread socketThread) {
-        LOGGER.info("SocketThread with name: \"" + socketThread.getName() + "\" started");
+        //LOGGER.info("SocketThread with name: \"" + socketThread.getName() + "\" started");
     }
 
     @Override
     public void onSocketReady(SocketThread socketThread, Socket socket) {
-        LOGGER.info("Socket " + socket.getRemoteSocketAddress() + ":" + socket.getPort() + " ready");
+        //LOGGER.info("Socket " + socket.getRemoteSocketAddress() + ":" + socket.getPort() + " ready");
     }
 
     @Override
     public void onReceiveMessage(SocketThread socketThread, Socket socket, String msg){
-        LOGGER.info("Socket received message: "  + msg);
+        //LOGGER.info("Socket received message: "  + msg);
     }
 
     @Override

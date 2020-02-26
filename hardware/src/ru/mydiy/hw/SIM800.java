@@ -3,6 +3,7 @@ package ru.mydiy.hw;
 public class SIM800 {
     //Notifications
     static final String OPERATOR = "+COPS";
+    static final String CALL_CONNECTED = "+COLP";
     static final String ERROR = "+CME ERROR";
     static final String CALL = "+CLCC";
     static final String READY = "RDY";
@@ -28,6 +29,8 @@ public class SIM800 {
     static final String COMMAND_SEPARATOR = ":";
     static final String NUMBER_BEGIN_SEPARATOR = ",\"";
     static final String NUMBER_END_SEPARATOR = "\",";
+    static final String CUSD_BEGIN_SEPARATOR = ", \"";
+    static final String CUSD_END_SEPARATOR = "\", ";
     static final String OPERATOR_BEGIN_SEPARATOR = ",\"";
     static final String OPERATOR_END_SEPARATOR = "\"\n";
 }
