@@ -73,7 +73,7 @@ public class GSMModule implements SerialDataEventListener {
                 case SIM800.CALL_CONNECTED:
                     String splitString = subMessage.substring(subMessage.indexOf(SIM800.CALL));
                     listener.debugMessage(splitString);
-                    String number = splitString.substring(subMessage.indexOf(SIM800.NUMBER_BEGIN_SEPARATOR) + 2, subMessage.indexOf(SIM800.NUMBER_END_SEPARATOR));
+                    String number = splitString.substring(splitString.indexOf(SIM800.NUMBER_BEGIN_SEPARATOR) + 2, splitString.indexOf(SIM800.NUMBER_END_SEPARATOR));
                     listener.debugMessage(number);
                     sendMessage(SIM800.DISCARD_CALL, "");
                     listener.onOutcomingCallDelivered(number);
