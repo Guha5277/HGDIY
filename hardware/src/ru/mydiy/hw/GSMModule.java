@@ -2,6 +2,7 @@
 package ru.mydiy.hw;
 
 import com.pi4j.io.serial.*;
+import com.sun.org.apache.xerces.internal.impl.dv.util.HexBin;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -75,6 +76,11 @@ public class GSMModule implements SerialDataEventListener {
                     break;
                 case SIM800.USSD:
                     /*TODO - ответ на USSD запрос*/
+                    String cussdMessage = subMessage.substring(subMessage.indexOf(SIM800.CUSD_BEGIN_SEPARATOR), subMessage.indexOf(SIM800.CUSD_END_SEPARATOR));
+                    if (!cussdMessage.contains(" ")){
+                        cussdMessage = UCS2toString(cussdMessage);
+                    }
+                    listener.debugMessage(cussdMessage);
                     break;
                 /*TODO - другие уведомления?*/
                 case SIM800.OPERATOR:
@@ -171,6 +177,17 @@ public class GSMModule implements SerialDataEventListener {
             decodeMessage(compileString.toString());
             compileString.delete(0, compileString.length());
         }
+    }
+
+    static String UCS2toString(String string){
+        if (string.length() % 4 != 0){
+            return "";
+        }
+        StringBuilder resultString = new StringBuilder();
+        for (int i = 0; i < string.length(); i+=4){
+            resultString.append((char)Integer.decode("0x" + string.substring(i, i + 4)).intValue());
+        }
+        return resultString.toString();
     }
 
     //Класс проверки ответа на отправленную команду

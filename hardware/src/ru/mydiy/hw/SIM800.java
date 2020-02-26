@@ -29,6 +29,8 @@ public class SIM800 {
     static final String COMMAND_SEPARATOR = ":";
     static final String NUMBER_BEGIN_SEPARATOR = ",\"";
     static final String NUMBER_END_SEPARATOR = "\",";
+    static final String CUSD_BEGIN_SEPARATOR = ", \"";
+    static final String CUSD_END_SEPARATOR = "\", ";
     static final String OPERATOR_BEGIN_SEPARATOR = ",\"";
     static final String OPERATOR_END_SEPARATOR = "\"\n";
 }
