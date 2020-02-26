@@ -181,7 +181,8 @@ public class GSMModule implements SerialDataEventListener {
         }
     }
 
-    static String UCS2toString(String string){
+    String UCS2toString(String string){
+        listener.debugMessage(string.length() + "");
         if (string.length() % 4 != 0){
             return "";
         }
@@ -189,6 +190,7 @@ public class GSMModule implements SerialDataEventListener {
         for (int i = 0; i < string.length(); i+=4){
             resultString.append((char)Integer.decode("0x" + string.substring(i, i + 4)).intValue());
         }
+        listener.debugMessage(resultString.toString());
         return resultString.toString();
     }
 
