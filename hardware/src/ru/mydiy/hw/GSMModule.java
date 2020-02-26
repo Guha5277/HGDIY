@@ -21,8 +21,8 @@ public class GSMModule implements SerialDataEventListener {
         initializeModule();
     }
 
-    private void initializeModule(){
-        lastReceivedCommandList = new ArrayList<>();        
+    private void initializeModule() {
+        lastReceivedCommandList = new ArrayList<>();
         serial.addListener(this);
         try {
             serial.open(SERIAL_PORT_ADDRESS, Baud._9600, DataBits._8, Parity.NONE, StopBits._1, FlowControl.NONE);
@@ -33,9 +33,10 @@ public class GSMModule implements SerialDataEventListener {
             listener.onException(e);
         }
     }
-    
+
     /*TODO - метод для дешифровки сообщения от GSM-модуля и вычленения главного из сообщения*/
-    private synchronized void decodeMessage(String message) throws IndexOutOfBoundsException{
+    private synchronized void decodeMessage(String message) throws IndexOutOfBoundsException {
+        listener.debugMessage("decodeMessage() input string: " + message);
         String subMessage = message.substring(2, message.length() - 2);
         char firstChar = subMessage.charAt(0); //Получение первого символа, для идентификации типа уведомления от модуля
 
@@ -151,7 +152,7 @@ public class GSMModule implements SerialDataEventListener {
         try {
             String msg = event.getAsciiString();
             listener.onReceivedMessage(this, msg);
-            if (msg.length() == 64 || compileString.length() > 0){
+            if (msg.length() == 64 || compileString.length() > 0) {
                 listener.debugMessage(Integer.toString(msg.length()));
                 compileMessage(msg);
             } else {
@@ -162,11 +163,9 @@ public class GSMModule implements SerialDataEventListener {
         }
     }
 
-    private synchronized void compileMessage(String string){
-        if (string.length() == 64){
-            compileString.append(string);
-        } else {
-            compileString.append(string);
+    private synchronized void compileMessage(String string) {
+        compileString.append(string);
+        if (string.length() < 64) {
             decodeMessage(compileString.toString());
             compileString.delete(0, compileString.length());
         }
@@ -187,7 +186,7 @@ public class GSMModule implements SerialDataEventListener {
             while (!isInterrupted()) {
                 if (lastReceivedCommandList.contains(command)) {
                     closeRequest(command);
-                } else if (lastReceivedCommandList.contains(SIM800.OK)){
+                } else if (lastReceivedCommandList.contains(SIM800.OK)) {
                     closeRequest(SIM800.OK);
                 } else if (System.currentTimeMillis() - timer > 10000) {
                     listener.debugMessage("Таймаут ожидания ответа от модуля");
@@ -203,7 +202,7 @@ public class GSMModule implements SerialDataEventListener {
             }
         }
 
-        private void closeRequest(String command){
+        private void closeRequest(String command) {
             listener.debugMessage("Ответ на команду: " + command);
             lastReceivedCommandList.remove(command);
             availableToSendCommand = true;
