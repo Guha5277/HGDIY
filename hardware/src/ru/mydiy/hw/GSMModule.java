@@ -148,6 +148,7 @@ public class GSMModule implements SerialDataEventListener {
     public void dataReceived(SerialDataEvent event) {
         try {
             String msg = event.getAsciiString();
+            listener.debugMessage(Integer.toString(msg.length()));
             listener.onReceivedMessage(this, msg);
             decodeMessage(msg);
 
