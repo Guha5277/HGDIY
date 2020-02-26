@@ -76,13 +76,14 @@ public class GSMModule implements SerialDataEventListener {
                     break;
                 case SIM800.USSD:
                     /*TODO - ответ на USSD запрос*/
-                    listener.debugMessage(subMessage);
                     String cussdMessage = subMessage.substring(subMessage.indexOf(SIM800.CUSD_BEGIN_SEPARATOR) + 3, subMessage.indexOf(SIM800.CUSD_END_SEPARATOR));
-                    listener.debugMessage(cussdMessage);
                     if (!cussdMessage.contains(" ")){
                         cussdMessage = UCS2toString(cussdMessage);
                     }
                     listener.debugMessage(cussdMessage);
+                    float sum = stringToFloat(cussdMessage);
+                    listener.debugMessage(String.valueOf(sum));
+
                     break;
                 /*TODO - другие уведомления?*/
                 case SIM800.OPERATOR:
@@ -181,7 +182,7 @@ public class GSMModule implements SerialDataEventListener {
         }
     }
 
-    String UCS2toString(String string){
+    private String UCS2toString(String string){
         listener.debugMessage(string.length() + "");
         if (string.length() % 4 != 0){
             return "";
@@ -192,6 +193,28 @@ public class GSMModule implements SerialDataEventListener {
         }
         listener.debugMessage(resultString.toString());
         return resultString.toString();
+    }
+
+    private float stringToFloat(String string){
+        StringBuilder sb = new StringBuilder();
+        boolean isNegative = false;
+        float result = 0.0f;
+        for (int i = 0; i < string.length(); i++) {
+            char temp = string.charAt(i);
+            if (temp == 0x2D) {
+                isNegative = true;
+                continue;
+            }
+            if (temp >= 0x30 && temp <= 0x39 || temp == 0x2E){
+                sb.append(temp);
+            }
+        }
+
+        if (isNegative){
+            return -(Float.valueOf(sb.toString()));
+        }
+
+        return Float.valueOf(sb.toString());
     }
 
     //Класс проверки ответа на отправленную команду
