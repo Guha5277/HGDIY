@@ -100,6 +100,10 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
                 LOGGER.info("Command - call");
                 gsmModule.call("+79994693778");
                 break;
+            case "balance":
+                LOGGER.info("Command - balance");
+                gsmModule.getBalance();
+                break;
             default:
                 gsmModule.sendMessage(msg, "");
         }

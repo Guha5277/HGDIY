@@ -76,7 +76,9 @@ public class GSMModule implements SerialDataEventListener {
                     break;
                 case SIM800.USSD:
                     /*TODO - ответ на USSD запрос*/
+                    listener.debugMessage(subMessage);
                     String cussdMessage = subMessage.substring(subMessage.indexOf(SIM800.CUSD_BEGIN_SEPARATOR) + 2, subMessage.indexOf(SIM800.CUSD_END_SEPARATOR));
+                    listener.debugMessage(cussdMessage);
                     if (!cussdMessage.contains(" ")){
                         cussdMessage = UCS2toString(cussdMessage);
                     }
@@ -120,7 +122,7 @@ public class GSMModule implements SerialDataEventListener {
 
     /*TODO - метод запроса баланса*/
     public void getBalance() {
-        //sendMessage();
+        sendMessage("AT", SIM800.USSD + "=1,\"*100#\"");
     }
 
     /*TODO - метод запроса оператора*/
