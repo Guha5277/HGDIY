@@ -193,4 +193,9 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
     public void onOutcomingCallFailed(String number) {
         LOGGER.info("Исходящий звонок (нет ответа): " + number);
     }
+
+    @Override
+    public void currentBalance(float balance) {
+        LOGGER.info("Баланс: " + balance);
+    }
 }

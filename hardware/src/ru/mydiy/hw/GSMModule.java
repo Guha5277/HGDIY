@@ -80,9 +80,8 @@ public class GSMModule implements SerialDataEventListener {
                     if (!cussdMessage.contains(" ")){
                         cussdMessage = UCS2toString(cussdMessage);
                     }
-                    listener.debugMessage(cussdMessage);
-                    float sum = stringToFloat(cussdMessage);
-                    listener.debugMessage(String.valueOf(sum));
+                    listener.currentBalance(stringToFloat(cussdMessage));
+                    listener.debugMessage(String.valueOf(Float.parseFloat(cussdMessage)));
 
                     break;
                 /*TODO - другие уведомления?*/
@@ -174,6 +173,7 @@ public class GSMModule implements SerialDataEventListener {
         }
     }
 
+    //Склейка двух суб-сообщений в одно (если сообщения разбились на пакеты)
     private synchronized void compileMessage(String string) {
         compileString.append(string);
         if (string.length() < 64) {
@@ -182,8 +182,8 @@ public class GSMModule implements SerialDataEventListener {
         }
     }
 
+    //Декодирование UCS2 сообщения в строку
     private String UCS2toString(String string){
-        listener.debugMessage(string.length() + "");
         if (string.length() % 4 != 0){
             return "";
         }
@@ -191,10 +191,10 @@ public class GSMModule implements SerialDataEventListener {
         for (int i = 0; i < string.length(); i+=4){
             resultString.append((char)Integer.decode("0x" + string.substring(i, i + 4)).intValue());
         }
-        listener.debugMessage(resultString.toString());
         return resultString.toString();
     }
 
+    //Получение числа из строки
     private float stringToFloat(String string){
         StringBuilder sb = new StringBuilder();
         boolean isNegative = false;
