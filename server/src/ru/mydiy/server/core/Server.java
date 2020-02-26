@@ -149,7 +149,7 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
     /*GSMModule events*/
     @Override
     public void onModuleStarted(GSMModule module) {
-        LOGGER.info("[GSM] started");
+        LOGGER.info("[GSM] заущен");
     }
 
     @Override
@@ -159,7 +159,7 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
 
     @Override
     public void onReceivedMessage(GSMModule module, String msg) {
-        LOGGER.info("[GSM] received message from module:" + msg);
+        LOGGER.info("[GSM] получено:" + msg.substring(2, msg.length() - 2));
         if (client != null) {
             client.sendMessage(msg);
         }
@@ -167,7 +167,7 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
 
     @Override
     public void onSendMessage(String msg) {
-        LOGGER.info("[GSM] send command to module: " + msg);
+        LOGGER.info("[GSM] отправлено: " + msg);
     }
 
     @Override
@@ -177,16 +177,16 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
 
     @Override
     public void onIncomingCall(String number) {
-        LOGGER.info("Incoming call: " + number);
+        LOGGER.info("Входящий звонок: " + number);
     }
 
     @Override
     public void onOutcomingCallDelivered(String number) {
-        LOGGER.info("Outcoming call delivered: " + number);
+        LOGGER.info("Исходящий звонок доставлен: " + number);
     }
 
     @Override
     public void onOutcomingCallFailed(String number) {
-        LOGGER.info("Outcoming call no answer: " + number);
+        LOGGER.info("Исходящий звонок (нет ответа): " + number);
     }
 }

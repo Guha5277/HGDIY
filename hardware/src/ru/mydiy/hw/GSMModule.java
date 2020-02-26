@@ -36,14 +36,12 @@ public class GSMModule implements SerialDataEventListener {
 
     /*TODO - метод для дешифровки сообщения от GSM-модуля и вычленения главного из сообщения*/
     private synchronized void decodeMessage(String message) throws IndexOutOfBoundsException {
-        listener.debugMessage("decodeMessage() input string: " + message);
         String subMessage = message.substring(2, message.length() - 2);
         char firstChar = subMessage.charAt(0); //Получение первого символа, для идентификации типа уведомления от модуля
 
         //Если firstChar начинается с символа '+'
         if (firstChar == 0x2b) {
             String command = subMessage.substring(0, subMessage.indexOf(SIM800.COMMAND_SEPARATOR));
-            listener.debugMessage("Command:" + command);
             switch (command) {
                 case SIM800.CALL:
                     lastReceivedCommandList.add(SIM800.CALL_TO);
@@ -51,7 +49,6 @@ public class GSMModule implements SerialDataEventListener {
                     if (subMessage.contains("\n")) {
                         String subCommand = subMessage.substring(subMessage.indexOf("\n") + 3);
                         String number = subMessage.substring(subMessage.indexOf(SIM800.NUMBER_BEGIN_SEPARATOR) + 2, subMessage.indexOf(SIM800.NUMBER_END_SEPARATOR));
-                        listener.debugMessage("Subcommand:" + subCommand);
                         switch (subCommand) {
                             //Входящий звонок
                             case SIM800.INCOMING_CALL:
@@ -60,7 +57,7 @@ public class GSMModule implements SerialDataEventListener {
                                 break;
                             //Вызов сброшен (без снятия трубки и после снятия)
                             case SIM800.BUSY:
-                            case SIM800.NO_CARRIER:
+                           // case SIM800.NO_CARRIER:
                                 listener.onOutcomingCallDelivered(number);
                                 break;
                             //Нет ответа на звонок
@@ -72,9 +69,7 @@ public class GSMModule implements SerialDataEventListener {
                     break;
                 case SIM800.CALL_CONNECTED:
                     String splitString = subMessage.substring(subMessage.indexOf(SIM800.CALL));
-                    listener.debugMessage(splitString);
                     String number = splitString.substring(splitString.indexOf(SIM800.NUMBER_BEGIN_SEPARATOR) + 2, splitString.indexOf(SIM800.NUMBER_END_SEPARATOR));
-                    listener.debugMessage(number);
                     sendMessage(SIM800.DISCARD_CALL, "");
                     listener.onOutcomingCallDelivered(number);
                     break;
@@ -161,7 +156,6 @@ public class GSMModule implements SerialDataEventListener {
             String msg = event.getAsciiString();
             listener.onReceivedMessage(this, msg);
             if (msg.length() == 64 || compileString.length() > 0) {
-                listener.debugMessage(Integer.toString(msg.length()));
                 compileMessage(msg);
             } else {
                 decodeMessage(msg);
@@ -185,7 +179,6 @@ public class GSMModule implements SerialDataEventListener {
 
         ResponseKeeper(String command) {
             this.command = command;
-            listener.debugMessage("ResponseKeeper command: " + command);
         }
 
         @Override
@@ -211,7 +204,6 @@ public class GSMModule implements SerialDataEventListener {
         }
 
         private void closeRequest(String command) {
-            listener.debugMessage("Ответ на команду: " + command);
             lastReceivedCommandList.remove(command);
             availableToSendCommand = true;
             interrupt();
@@ -232,10 +224,8 @@ public class GSMModule implements SerialDataEventListener {
         public void run() {
             while (!isInterrupted()) {
                 if (commands.isEmpty()) {
-                    listener.debugMessage("Очередь отправки модулю пуста");
                     interrupt();
                 } else if (availableToSendCommand) {
-                    listener.debugMessage("Отправка команды из очереди...");
                     sendMessage(headers.get(0), commands.get(0));
                     headers.remove(0);
                     commands.remove(0);
