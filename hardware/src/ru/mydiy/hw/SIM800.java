@@ -3,6 +3,7 @@ package ru.mydiy.hw;
 public class SIM800 {
     //Notifications
     static final String OPERATOR = "+COPS";
+    static final String CALL_CONNECTED = "+COLP";
     static final String ERROR = "+CME ERROR";
     static final String CALL = "+CLCC";
     static final String READY = "RDY";
