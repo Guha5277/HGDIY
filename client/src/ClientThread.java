@@ -25,9 +25,9 @@ public class ClientThread implements SocketThreadListener {
     private ClientThread(){
         Socket socket = null;
         try {
-            LOGGER.info("Connecting to: " + host +":" + port);
+            //LOGGER.info("Connecting to: " + host +":" + port);
             socket = new Socket(host, port);
-            LOGGER.info("Connected");
+            //LOGGER.info("Connected");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -37,17 +37,17 @@ public class ClientThread implements SocketThreadListener {
     /* Socket Events*/
     @Override
     public void onSocketThreadStart(SocketThread socketThread) {
-        LOGGER.info("SocketThread with name: \"" + socketThread.getName() + "\" started");
+        //LOGGER.info("SocketThread with name: \"" + socketThread.getName() + "\" started");
     }
 
     @Override
     public void onSocketReady(SocketThread socketThread, Socket socket) {
-        LOGGER.info("Socket " + socket.getRemoteSocketAddress() + ":" + socket.getPort() + " ready");
+        //LOGGER.info("Socket " + socket.getRemoteSocketAddress() + ":" + socket.getPort() + " ready");
     }
 
     @Override
     public void onReceiveMessage(SocketThread socketThread, Socket socket, String msg){
-        LOGGER.info("Socket received message: "  + msg);
+        //LOGGER.info("Socket received message: "  + msg);
     }
 
     @Override

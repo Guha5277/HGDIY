@@ -57,11 +57,11 @@ public class GSMModule implements SerialDataEventListener {
                                 break;
                             //Вызов сброшен (без снятия трубки и после снятия)
                             case SIM800.BUSY:
-                           // case SIM800.NO_CARRIER:
                                 listener.onOutcomingCallDelivered(number);
                                 break;
                             //Нет ответа на звонок
                             case SIM800.NO_ANSWER:
+                            case SIM800.NO_CARRIER:
                                 listener.onOutcomingCallFailed(number);
                                 break;
                         }
