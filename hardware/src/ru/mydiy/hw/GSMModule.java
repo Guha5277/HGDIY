@@ -35,13 +35,12 @@ public class GSMModule implements SerialDataEventListener {
 
     /*TODO - метод для дешифровки сообщения от GSM-модуля и вычленения главного из сообщения*/
     private synchronized void decodeMessage(String message) throws IndexOutOfBoundsException {
-        String subMessage;
-        if(message.length() > 4) {
-            subMessage = message.substring(2, message.length() - 2);
-        } else {
+        if (message.contains(">")) {
             lastReceivedCommandList.add(SIM800.OK);
             return;
         }
+        String subMessage = message.substring(2, message.length() - 2);
+
         char firstChar = subMessage.charAt(0); //Получение первого символа, для идентификации типа уведомления от модуля
 
         //Если firstChar начинается с символа '+'
@@ -92,6 +91,14 @@ public class GSMModule implements SerialDataEventListener {
                     lastReceivedCommandList.add(SIM800.OK);
                     listener.operatorNameReceived(subMessage.substring(subMessage.indexOf(SIM800.OPERATOR_BEGIN_SEPARATOR) + 2, subMessage.indexOf(SIM800.OPERATOR_END_SEPARATOR)));
                     break;
+                case SIM800.SMS_SEND:
+
+                    if (subMessage.contains(SIM800.OK)){
+                        listener.smsSended();
+                    } else {
+                        listener.smsSendedError();
+                    }
+                    lastReceivedCommandList.add(SIM800.OK);
             }
 
             //Если firstChar начинается с символа A-Z
@@ -161,12 +168,12 @@ public class GSMModule implements SerialDataEventListener {
         }
     }
 
-    public synchronized void sendSMS(String number, String message){
+    public synchronized void sendSMS(String number, String message) {
         String pduPackage = preparePDU(number, message);
         int pduLength = (pduPackage.length() - 2) / 2;
 
         sendMessage("AT+CMGS=", String.valueOf(pduLength));
-        sendMessage(pduPackage + (char)26, "");
+        sendMessage(pduPackage + (char) 26, "");
     }
 
     //Подготовка номера, для формирования PDU-пакета
@@ -212,7 +219,7 @@ public class GSMModule implements SerialDataEventListener {
         String numberLength = parsedNumber.contains("F") ? Integer.toHexString(parsedNumber.length() - 1).toUpperCase() : Integer.toHexString(parsedNumber.length()).toUpperCase();
 
         result.append("000100");
-        if (numberLength.length() < 2){
+        if (numberLength.length() < 2) {
             result.append("0");
             result.append(numberLength);
         } else {

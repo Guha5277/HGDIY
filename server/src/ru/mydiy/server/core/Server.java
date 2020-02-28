@@ -218,4 +218,14 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
     public void operatorNameReceived(String operator) {
         LOGGER.info("Оператор: " + operator);
     }
+
+    @Override
+    public void smsSended() {
+        LOGGER.info("СМС-сообщение отправлено!");
+    }
+
+    @Override
+    public void smsSendedError() {
+        LOGGER.info("Ошибка отправки СМС-сообщения");
+    }
 }
