@@ -2,8 +2,6 @@
 package ru.mydiy.hw;
 
 import com.pi4j.io.serial.*;
-import com.sun.org.apache.xerces.internal.impl.dv.util.HexBin;
-
 import java.io.IOException;
 import java.util.ArrayList;
 
@@ -37,7 +35,13 @@ public class GSMModule implements SerialDataEventListener {
 
     /*TODO - метод для дешифровки сообщения от GSM-модуля и вычленения главного из сообщения*/
     private synchronized void decodeMessage(String message) throws IndexOutOfBoundsException {
-        String subMessage = message.substring(2, message.length() - 2);
+        String subMessage;
+        if(message.length() > 4) {
+            subMessage = message.substring(2, message.length() - 2);
+        } else {
+            lastReceivedCommandList.add(SIM800.OK);
+            return;
+        }
         char firstChar = subMessage.charAt(0); //Получение первого символа, для идентификации типа уведомления от модуля
 
         //Если firstChar начинается с символа '+'
@@ -155,6 +159,74 @@ public class GSMModule implements SerialDataEventListener {
                 msKeeper.start();
             }
         }
+    }
+
+    public synchronized void sendSMS(String number, String message){
+        String pduPackage = preparePDU(number, message);
+        int pduLength = (pduPackage.length() - 2) / 2;
+
+        sendMessage("AT+CMGS=", String.valueOf(pduLength));
+        sendMessage(pduPackage + (char)26, "");
+    }
+
+    //Подготовка номера, для формирования PDU-пакета
+    private String parseNumber(String number) {
+        StringBuilder result = new StringBuilder();
+        if (number.charAt(0) == '+') {
+            number = number.substring(1);
+        }
+
+        if (number.length() % 2 != 0) {
+            number = number + "F";
+        }
+
+        for (int i = 0; i < number.length(); i += 2) {
+            result.append(number.charAt(i + 1));
+            result.append(number.charAt(i));
+        }
+        return result.toString();
+    }
+
+    //Подготовка сообщения, для формирования PDU-пакета
+    private String stringToUCS2(String string) {
+        StringBuilder charCode = new StringBuilder();
+        StringBuilder result = new StringBuilder();
+
+        for (int i = 0; i < string.length(); i++) {
+            charCode.append(Integer.toHexString(string.charAt(i)).toUpperCase());
+            while (charCode.length() < 4) {
+                charCode.insert(0, "0");
+            }
+            result.append(charCode);
+            charCode.delete(0, 4);
+        }
+
+        return result.toString();
+    }
+
+    //Формирование PDU-пакета
+    private String preparePDU(String number, String message) {
+        StringBuilder result = new StringBuilder();
+        String parsedNumber = parseNumber(number);
+        String parsedMessage = stringToUCS2(message);
+        String numberLength = parsedNumber.contains("F") ? Integer.toHexString(parsedNumber.length() - 1).toUpperCase() : Integer.toHexString(parsedNumber.length()).toUpperCase();
+
+        result.append("000100");
+        if (numberLength.length() < 2){
+            result.append("0");
+            result.append(numberLength);
+        } else {
+            result.append(numberLength);
+        }
+        result.append("91");
+        result.append(parsedNumber);
+        result.append("0008");
+        String nl = Integer.toHexString(message.length() * 2).toUpperCase();
+        if (nl.length() < 2) result.append("0");
+        result.append(nl);
+        result.append(parsedMessage);
+
+        return result.toString();
     }
 
     //Слушатель присланных модулем сообщений

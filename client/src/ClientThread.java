@@ -17,7 +17,7 @@ public class ClientThread implements SocketThreadListener {
         Scanner scanner = new Scanner(System.in);
 
         while (true){
-            String msg = scanner.next();
+            String msg = scanner.nextLine();
             client.sendMessage(msg);
         }
     }
