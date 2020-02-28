@@ -102,7 +102,11 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
                 break;
             case "balance":
                 LOGGER.info("Command - balance");
-                gsmModule.getBalance();
+                gsmModule.checkBalance();
+                break;
+            case "operator":
+                LOGGER.info("Command - operator");
+                gsmModule.getOperator();
                 break;
             default:
                 gsmModule.sendMessage(msg, "");
@@ -197,5 +201,10 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
     @Override
     public void currentBalance(float balance) {
         LOGGER.info("Баланс: " + balance);
+    }
+
+    @Override
+    public void operatorNameReceived(String operator) {
+        LOGGER.info("Оператор: " + operator);
     }
 }

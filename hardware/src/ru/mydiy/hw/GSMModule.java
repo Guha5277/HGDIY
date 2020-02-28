@@ -86,6 +86,7 @@ public class GSMModule implements SerialDataEventListener {
                 /*TODO - другие уведомления?*/
                 case SIM800.OPERATOR:
                     lastReceivedCommandList.add(SIM800.OK);
+                    listener.operatorNameReceived(subMessage.substring(subMessage.indexOf(SIM800.OPERATOR_BEGIN_SEPARATOR) + 2, subMessage.indexOf(SIM800.OPERATOR_END_SEPARATOR)));
                     break;
             }
 

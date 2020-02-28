@@ -32,5 +32,5 @@ public class SIM800 {
     static final String CUSD_BEGIN_SEPARATOR = ", \"";
     static final String CUSD_END_SEPARATOR = "\", ";
     static final String OPERATOR_BEGIN_SEPARATOR = ",\"";
-    static final String OPERATOR_END_SEPARATOR = "\"\n";
+    static final String OPERATOR_END_SEPARATOR = "\"\r";
 }
