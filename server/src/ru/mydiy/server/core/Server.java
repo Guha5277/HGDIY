@@ -94,20 +94,34 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
 
     @Override
     public void onReceiveMessage(SocketThread socketThread, Socket socket, String msg) {
-        LOGGER.info("Received message from client");
-        switch (msg) {
+        LOGGER.info("Received message from client " + msg);
+        String command;
+        if (msg.contains("sms")){
+            command = msg.substring(0, 3);
+            LOGGER.debug("command: " + command);
+        } else {
+            command = msg;
+        }
+        switch (command) {
             case "call":
                 LOGGER.info("Command - call");
                 gsmModule.call("+79994693778");
                 break;
             case "balance":
                 LOGGER.info("Command - balance");
-                gsmModule.getBalance();
+                gsmModule.checkBalance();
+                break;
+            case "operator":
+                LOGGER.info("Command - operator");
+                gsmModule.getOperator();
+                break;
+            case "sms":
+                LOGGER.info("Command - sms");
+                gsmModule.sendSMS("+79994693778", msg.substring(4));
                 break;
             default:
                 gsmModule.sendMessage(msg, "");
         }
-        //gsmModule.sendMessage(msg, "");
     }
 
     @Override
@@ -163,7 +177,8 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
 
     @Override
     public void onReceivedMessage(GSMModule module, String msg) {
-        LOGGER.info("[GSM] получено:" + msg.substring(2, msg.length() - 2));
+        LOGGER.info("[GSM] получено:" + msg);
+        //LOGGER.info("[GSM] получено:" + msg.substring(2, msg.length() - 2));
         if (client != null) {
             client.sendMessage(msg);
         }
@@ -197,5 +212,10 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
     @Override
     public void currentBalance(float balance) {
         LOGGER.info("Баланс: " + balance);
+    }
+
+    @Override
+    public void operatorNameReceived(String operator) {
+        LOGGER.info("Оператор: " + operator);
     }
 }

@@ -2,8 +2,6 @@
 package ru.mydiy.hw;
 
 import com.pi4j.io.serial.*;
-import com.sun.org.apache.xerces.internal.impl.dv.util.HexBin;
-
 import java.io.IOException;
 import java.util.ArrayList;
 
@@ -37,16 +35,22 @@ public class GSMModule implements SerialDataEventListener {
 
     /*TODO - метод для дешифровки сообщения от GSM-модуля и вычленения главного из сообщения*/
     private synchronized void decodeMessage(String message) throws IndexOutOfBoundsException {
-        String subMessage = message.substring(2, message.length() - 2);
+        String subMessage;
+        if(message.length() > 4) {
+            subMessage = message.substring(2, message.length() - 2);
+        } else {
+            lastReceivedCommandList.add(SIM800.OK);
+            return;
+        }
         char firstChar = subMessage.charAt(0); //Получение первого символа, для идентификации типа уведомления от модуля
 
         //Если firstChar начинается с символа '+'
         if (firstChar == 0x2b) {
             String command = subMessage.substring(0, subMessage.indexOf(SIM800.COMMAND_SEPARATOR));
             switch (command) {
+                //Звонок
                 case SIM800.CALL:
                     lastReceivedCommandList.add(SIM800.CALL_TO);
-                    //Если в сообщении присутствует дополнительная информация
                     if (subMessage.contains("\n")) {
                         String subCommand = subMessage.substring(subMessage.indexOf("\n") + 3);
                         String number = subMessage.substring(subMessage.indexOf(SIM800.NUMBER_BEGIN_SEPARATOR) + 2, subMessage.indexOf(SIM800.NUMBER_END_SEPARATOR));
@@ -56,7 +60,7 @@ public class GSMModule implements SerialDataEventListener {
                                 listener.onIncomingCall(number);
                                 sendMessage(SIM800.DISCARD_CALL, "");
                                 break;
-                            //Вызов сброшен (без снятия трубки и после снятия)
+                            //Исходящий вызов сброшен
                             case SIM800.BUSY:
                                 listener.onOutcomingCallDelivered(number);
                                 break;
@@ -68,28 +72,30 @@ public class GSMModule implements SerialDataEventListener {
                         }
                     }
                     break;
+                //Звонок. Установлено соединение (абонент снял трубку)
                 case SIM800.CALL_CONNECTED:
                     String splitString = subMessage.substring(subMessage.indexOf(SIM800.CALL));
                     String number = splitString.substring(splitString.indexOf(SIM800.NUMBER_BEGIN_SEPARATOR) + 2, splitString.indexOf(SIM800.NUMBER_END_SEPARATOR));
                     sendMessage(SIM800.DISCARD_CALL, "");
                     listener.onOutcomingCallDelivered(number);
                     break;
+                //USSD-ответ
                 case SIM800.USSD:
-                    /*TODO - ответ на USSD запрос*/
-                    String cussdMessage = subMessage.substring(subMessage.indexOf(SIM800.CUSD_BEGIN_SEPARATOR) + 3, subMessage.indexOf(SIM800.CUSD_END_SEPARATOR));
-                    if (!cussdMessage.contains(" ")){
-                        cussdMessage = UCS2toString(cussdMessage);
+                    String ussdMessage = subMessage.substring(subMessage.indexOf(SIM800.CUSD_BEGIN_SEPARATOR) + 3, subMessage.indexOf(SIM800.CUSD_END_SEPARATOR));
+                    if (!ussdMessage.contains(" ")) {
+                        ussdMessage = UCS2toString(ussdMessage);
                     }
-                    listener.currentBalance(stringToFloat(cussdMessage));
+                    listener.currentBalance(stringToFloat(ussdMessage));
                     break;
                 /*TODO - другие уведомления?*/
                 case SIM800.OPERATOR:
                     lastReceivedCommandList.add(SIM800.OK);
+                    listener.operatorNameReceived(subMessage.substring(subMessage.indexOf(SIM800.OPERATOR_BEGIN_SEPARATOR) + 2, subMessage.indexOf(SIM800.OPERATOR_END_SEPARATOR)));
                     break;
             }
 
-            //Если firstChar начинается с символа A-Z или a-z
-        } else if (firstChar >= 0x41 && firstChar <= 0x5a || firstChar >= 0x61 && firstChar <= 0x79) { //Если начинается с A-Z или a-z
+            //Если firstChar начинается с символа A-Z
+        } else if (firstChar >= 0x41 && firstChar <= 0x5a || firstChar >= 0x61 && firstChar <= 0x79) {
             switch (subMessage) {
                 case SIM800.OK:
                     lastReceivedCommandList.add(SIM800.OK);
@@ -104,27 +110,27 @@ public class GSMModule implements SerialDataEventListener {
                     listener.debugMessage("UNDER VOLTAGE POWER DOWN!");
                     break;
                 case SIM800.UNDER_VOLTAGE_WARN:
-                    listener.debugMessage("UNDER VOLTAGE WARNING!");
+                    listener.debugMessage("UNDER VOLTAGE WARNING");
                     break;
                 case SIM800.OVER_VOLTAGE_PWD:
-                    listener.debugMessage("OVER VOLTAGE POWER DOWN");
+                    listener.debugMessage("OVER VOLTAGE POWER DOWN!");
                     break;
                 case SIM800.OVER_VOLTAGE_WARN:
                     listener.debugMessage("OVER VOLTAGE WARNING");
                     break;
             }
         } else {
-            listener.debugMessage("Неизвестное незапрашевоемое уведомление от модуля");
+            listener.debugMessage("Неизвестное уведомление от модуля");
         }
     }
 
-    /*TODO - метод запроса баланса*/
-    public void getBalance() {
+    //USSD запрос баланса
+    public void checkBalance() {
         sendMessage("AT", SIM800.USSD + "=1,\"*100#\"");
     }
 
-    /*TODO - метод запроса оператора*/
-    public void operator() {
+    //Запрос сведений об операторе связи
+    public void getOperator() {
         sendMessage("AT", SIM800.OPERATOR + '?');
     }
 
@@ -155,6 +161,74 @@ public class GSMModule implements SerialDataEventListener {
         }
     }
 
+    public synchronized void sendSMS(String number, String message){
+        String pduPackage = preparePDU(number, message);
+        int pduLength = (pduPackage.length() - 2) / 2;
+
+        sendMessage("AT+CMGS=", String.valueOf(pduLength));
+        sendMessage(pduPackage + (char)26, "");
+    }
+
+    //Подготовка номера, для формирования PDU-пакета
+    private String parseNumber(String number) {
+        StringBuilder result = new StringBuilder();
+        if (number.charAt(0) == '+') {
+            number = number.substring(1);
+        }
+
+        if (number.length() % 2 != 0) {
+            number = number + "F";
+        }
+
+        for (int i = 0; i < number.length(); i += 2) {
+            result.append(number.charAt(i + 1));
+            result.append(number.charAt(i));
+        }
+        return result.toString();
+    }
+
+    //Подготовка сообщения, для формирования PDU-пакета
+    private String stringToUCS2(String string) {
+        StringBuilder charCode = new StringBuilder();
+        StringBuilder result = new StringBuilder();
+
+        for (int i = 0; i < string.length(); i++) {
+            charCode.append(Integer.toHexString(string.charAt(i)).toUpperCase());
+            while (charCode.length() < 4) {
+                charCode.insert(0, "0");
+            }
+            result.append(charCode);
+            charCode.delete(0, 4);
+        }
+
+        return result.toString();
+    }
+
+    //Формирование PDU-пакета
+    private String preparePDU(String number, String message) {
+        StringBuilder result = new StringBuilder();
+        String parsedNumber = parseNumber(number);
+        String parsedMessage = stringToUCS2(message);
+        String numberLength = parsedNumber.contains("F") ? Integer.toHexString(parsedNumber.length() - 1).toUpperCase() : Integer.toHexString(parsedNumber.length()).toUpperCase();
+
+        result.append("000100");
+        if (numberLength.length() < 2){
+            result.append("0");
+            result.append(numberLength);
+        } else {
+            result.append(numberLength);
+        }
+        result.append("91");
+        result.append(parsedNumber);
+        result.append("0008");
+        String nl = Integer.toHexString(message.length() * 2).toUpperCase();
+        if (nl.length() < 2) result.append("0");
+        result.append(nl);
+        result.append(parsedMessage);
+
+        return result.toString();
+    }
+
     //Слушатель присланных модулем сообщений
     @Override
     public void dataReceived(SerialDataEvent event) {
@@ -181,19 +255,19 @@ public class GSMModule implements SerialDataEventListener {
     }
 
     //Декодирование UCS2 сообщения в строку
-    private String UCS2toString(String string){
-        if (string.length() % 4 != 0){
+    private synchronized String UCS2toString(String string) {
+        if (string.length() % 4 != 0) {
             return "";
         }
         StringBuilder resultString = new StringBuilder();
-        for (int i = 0; i < string.length(); i+=4){
-            resultString.append((char)Integer.decode("0x" + string.substring(i, i + 4)).intValue());
+        for (int i = 0; i < string.length(); i += 4) {
+            resultString.append((char) Integer.decode("0x" + string.substring(i, i + 4)).intValue());
         }
         return resultString.toString();
     }
 
     //Получение числа из строки
-    private float stringToFloat(String string){
+    private synchronized float stringToFloat(String string) {
         StringBuilder sb = new StringBuilder();
         boolean isNegative = false;
         float result = 0.0f;
@@ -203,14 +277,14 @@ public class GSMModule implements SerialDataEventListener {
                 isNegative = true;
                 continue;
             }
-            if (temp >= 0x30 && temp <= 0x39 || temp == 0x2E){
+            if (temp >= 0x30 && temp <= 0x39 || temp == 0x2E) {
                 sb.append(temp);
-            } else if (sb.length() > 0){
+            } else if (sb.length() > 0) {
                 break;
             }
         }
 
-        if (isNegative){
+        if (isNegative) {
             return -(Float.valueOf(sb.toString()));
         }
 

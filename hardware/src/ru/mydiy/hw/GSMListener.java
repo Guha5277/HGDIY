@@ -7,6 +7,7 @@ public interface GSMListener {
     void onOutcomingCallFailed(String number);
     void onSendMessage(String msg);
     void currentBalance(float balance);
+    void operatorNameReceived(String operator);
     void onIncomingCall(String number);
     void onException(Exception e);
     void debugMessage(String message);
