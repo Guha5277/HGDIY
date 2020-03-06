@@ -21,6 +21,7 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
     private int timeout = 2000;
     private SocketThread client;
     private GSMModule gsmModule;
+    private final String number;
     ServerSocketThread serverSocketThread;
     private final static Logger LOGGER = LogManager.getLogger();
 
@@ -30,10 +31,11 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
     private boolean isGSMModuleReady = false;
 
     public static void main(String[] args) {
-        Server server = new Server();
+        new Server(args[0]);
     }
 
-    Server() {
+    Server(String number) {
+        this.number = number;
         MotionSensor monitor1 = new MotionSensor(this, "PIR1", 0);
         //MotionSensor monitor2 = new MotionSensor(this, OrangePiPin.GPIO_02);
         gsmModule = new GSMModule(this);
@@ -105,7 +107,7 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
         switch (command) {
             case "call":
                 LOGGER.info("Command - call");
-                gsmModule.call("+79994693778");
+                gsmModule.call(number);
                 break;
             case "balance":
                 LOGGER.info("Command - balance");
@@ -117,7 +119,7 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
                 break;
             case "sms":
                 LOGGER.info("Command - sms");
-                gsmModule.sendSMS("+79994693778", msg.substring(4));
+                gsmModule.sendSMS(number, msg.substring(4));
                 break;
             default:
                 gsmModule.sendMessage(msg, "");
@@ -220,12 +222,17 @@ public class Server implements ServerSocketListener, SocketThreadListener, GSMLi
     }
 
     @Override
-    public void smsSended() {
+    public void smsSent() {
         LOGGER.info("СМС-сообщение отправлено!");
     }
 
     @Override
-    public void smsSendedError() {
+    public void smsSentError() {
         LOGGER.info("Ошибка отправки СМС-сообщения");
+    }
+
+    @Override
+    public void onModuleFailedToStart(GSMModule module) {
+        LOGGER.info("Ошибка при старте модуля!");
     }
 }

@@ -34,4 +34,7 @@ public class SIM800 {
     static final String CUSD_END_SEPARATOR = "\", ";
     static final String OPERATOR_BEGIN_SEPARATOR = ",\"";
     static final String OPERATOR_END_SEPARATOR = "\"\r";
+
+    static final String BALANCE100 = "=1,\"*100#\""; //Beeline, Tinkoff, Мегафон, Yota, МТС (смс)
+    static final String BALANCE105 = "=1,\"*105#\""; //Tele2(смс), Ростелеком (смс)
 }

@@ -29,7 +29,7 @@ public class GSMModule implements SerialDataEventListener {
             compileString = new StringBuilder();
             listener.onModuleStarted(this);
         } catch (IOException e) {
-            listener.onException(e);
+            listener.onModuleFailedToStart(this);
         }
     }
 
@@ -94,9 +94,9 @@ public class GSMModule implements SerialDataEventListener {
                 case SIM800.SMS_SEND:
 
                     if (subMessage.contains(SIM800.OK)){
-                        listener.smsSended();
+                        listener.smsSent();
                     } else {
-                        listener.smsSendedError();
+                        listener.smsSentError();
                     }
                     lastReceivedCommandList.add(SIM800.OK);
             }
@@ -133,7 +133,7 @@ public class GSMModule implements SerialDataEventListener {
 
     //USSD запрос баланса
     public void checkBalance() {
-        sendMessage("AT", SIM800.USSD + "=1,\"*100#\"");
+        sendMessage("AT", SIM800.USSD + SIM800.BALANCE100);
     }
 
     //Запрос сведений об операторе связи
